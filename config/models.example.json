@@ -1,0 +1,5 @@
+{
+  "planner": { "provider": "openai", "model": "REPLACE_WITH_YOUR_MODEL", "key_env": "PLANNER_API_KEY", "search": false, "provider_options": {} },
+  "observer": { "provider": "google", "model": "REPLACE_WITH_YOUR_SEARCH_MODEL", "key_env": "OBSERVER_API_KEY", "search": true, "provider_options": {} },
+  "synthesizer": { "provider": "anthropic", "model": "REPLACE_WITH_YOUR_MODEL", "key_env": "SYNTHESIZER_API_KEY", "search": false, "provider_options": {} }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "@mclab/openrouter-adapter",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "4.0.62",
+    "@ai-sdk/google": "4.0.79",
+    "@ai-sdk/openai": "4.0.74",
+    "@ai-sdk/openai-compatible": "3.0.55",
+    "@mclab/contracts": "0.1.0",
+    "@mclab/shopify-online-store": "0.1.0",
+    "@openrouter/ai-sdk-provider": "3.1.0",
+    "ai": "7.0.113",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@mclab/domain": "0.1.0",
+    "vitest": "4.1.11"
+  },
+  "scripts": {
+    "typecheck": "tsc --project tsconfig.json",
+    "test": "vitest run"
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "shopify-check",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-02",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page",
+    "run_worker_first": true
+  },
+  "vars": {
+    "ENVIRONMENT": "local",
+    "API_VERSION": "v1",
+    "PRICING_VERSION": "self-hosted-v1",
+    "SELF_HOSTED": "true",
+    "FREE_CHECK_ENABLED": "false",
+    "SELF_CHECK_JEV_CLASSIFIER": "false"
+  },
+  "secrets": {
+    "required": []
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "shopify-check",
+      "migrations_dir": "../../migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "EVIDENCE",
+      "bucket_name": "shopify-check-evidence"
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "TASK_RATE_LIMITER",
+      "namespace_id": "61001",
+      "simple": {
+        "limit": 6,
+        "period": 60
+      }
+    },
+    {
+      "name": "CHECKOUT_RATE_LIMITER",
+      "namespace_id": "61002",
+      "simple": {
+        "limit": 12,
+        "period": 60
+      }
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "JOBS_QUEUE",
+        "queue": "shopify-check-jobs"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "shopify-check-jobs",
+        "max_batch_size": 3,
+        "max_batch_timeout": 5,
+        "max_retries": 2,
+        "dead_letter_queue": "shopify-check-dead-letter",
+        "max_concurrency": 3
+      }
+    ]
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "CREDIT_ADMISSION",
+        "class_name": "CreditAdmission"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "CreditAdmission"
+      ]
+    }
+  ],
+  "observability": {
+    "enabled": false
+  },
+  "triggers": {
+    "crons": [
+      "*/5 * * * *"
+    ]
+  }
+}

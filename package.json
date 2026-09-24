@@ -1,0 +1,46 @@
+{
+  "name": "shopify-check",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "packages/*/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "check": "npm run typecheck --workspaces --if-present && npm run test",
+    "dev": "npm run dev --workspace @mclab/worker",
+    "deploy:production": "npm run deploy:production --workspace @mclab/worker",
+    "db:migrate:production": "npm run db:migrate:production --workspace @mclab/worker",
+    "test": "npm run test --workspace @mclab/domain && npm run test --workspace @mclab/shopify-online-store && npm run test --workspace @mclab/openrouter-adapter && npm run test --workspace @mclab/worker",
+    "types": "npm run types --workspace @mclab/worker",
+    "wrangler:check": "npm run wrangler:check --workspace @mclab/worker",
+    "wrangler:dry-run": "npm run wrangler:dry-run --workspace @mclab/worker",
+    "privacy:check": "node scripts/privacy-check.mjs",
+    "dry-run": "npm run wrangler:dry-run",
+    "setup": "node scripts/setup.mjs",
+    "configure": "node scripts/configure.mjs",
+    "cloud:config": "node scripts/cloud-config.mjs",
+    "db:migrate": "npm run db:migrate --workspace @mclab/worker",
+    "deploy": "node scripts/deploy.mjs"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@openrouter/ai-sdk-provider": "3.1.0",
+    "ai": "7.0.113"
+  },
+  "license": "Apache-2.0",
+  "description": "Open-source Shopify product data and AI shopping diagnostics with operator-configured models.",
+  "overrides": {
+    "miniflare": {
+      "sharp": "0.35.4"
+    }
+  }
+}

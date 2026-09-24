@@ -1,0 +1,6 @@
+{
+  "planner": { "provider": "openrouter", "model": "example/planner", "key_env": "TEST_MODEL_KEY", "search": true, "provider_order": ["openai"] },
+  "observer": { "provider": "openrouter", "model": "example/observer", "key_env": "TEST_MODEL_KEY", "search": true, "provider_order": ["example-provider"] },
+  "synthesizer": { "provider": "openrouter", "model": "example/synthesizer", "key_env": "TEST_MODEL_KEY", "search": false, "provider_order": ["openai"] },
+  "fallback": { "provider": "openrouter", "model": "example/fallback", "key_env": "TEST_MODEL_KEY", "search": true, "provider_order": ["openai"] }
+}

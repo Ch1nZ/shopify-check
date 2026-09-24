@@ -1,0 +1,34 @@
+{
+  "name": "@mclab/worker",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "npm run build --workspace @mclab/web",
+    "db:migrate": "wrangler d1 migrations apply DB --local",
+    "db:migrate:production": "wrangler d1 migrations apply DB --remote --env production",
+    "deploy:production": "node ../../scripts/deploy.mjs",
+    "dev": "npm run build --workspace @mclab/web && wrangler dev --local",
+    "test": "vitest run",
+    "typecheck": "tsc --project tsconfig.json",
+    "types": "wrangler types worker-configuration.d.ts",
+    "wrangler:check": "wrangler types --check worker-configuration.d.ts",
+    "wrangler:dry-run": "npm run build && wrangler deploy --dry-run --outdir .wrangler/dry-run"
+  },
+  "dependencies": {
+    "@langchain/core": "1.2.9",
+    "@langchain/langgraph": "1.4.14",
+    "@langchain/langgraph-checkpoint": "1.1.5",
+    "@mclab/contracts": "0.1.0",
+    "@mclab/domain": "0.1.0",
+    "@mclab/openrouter-adapter": "0.1.0",
+    "@mclab/shopify-online-store": "0.1.0",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.22.0",
+    "@types/node": "^26.4.1",
+    "vitest": "4.1.11",
+    "wrangler": "4.128.0"
+  }
+}

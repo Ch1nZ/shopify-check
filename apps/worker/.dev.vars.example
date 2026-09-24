@@ -1,0 +1,8 @@
+# Local-only operator configuration. Never commit the filled .dev.vars file.
+# npm run setup creates a random operator access token in .dev.vars.
+SELF_HOST_ACCESS_TOKEN=
+PLANNER_API_KEY=
+OBSERVER_API_KEY=
+SYNTHESIZER_API_KEY=
+# npm run configure reads your models.local.json and updates this setting.
+MODEL_CONFIG={}

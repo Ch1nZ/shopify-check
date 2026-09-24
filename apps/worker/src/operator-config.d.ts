@@ -1,0 +1,16 @@
+interface Env {
+  MODEL_CONFIG?: string;
+  SELF_HOST_ACCESS_TOKEN?: string;
+  OPENROUTER_API_KEY?: string;
+  PADDLE_API_KEY?: string;
+  PADDLE_WEBHOOK_SECRET?: string;
+  PADDLE_CLIENT_TOKEN?: string;
+  RESEND_API_KEY?: string;
+  OWNER_STATS_TOKEN?: string;
+  PADDLE_CHECKOUT_ENABLED?: string;
+  PADDLE_PRICE_ID_STARTER?: string;
+  PADDLE_PRICE_ID_BUILDER?: string;
+  PADDLE_PRICE_ID_STUDIO?: string;
+  RECOVERY_EMAIL_FROM?: string;
+  FREE_CHECK_DAILY_CAP?: string;
+}

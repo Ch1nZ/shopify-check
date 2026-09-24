@@ -1,0 +1,10 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
+const root=fileURLToPath(new URL('../',import.meta.url));
+const config=resolve(root,'.runtime/wrangler.jsonc');
+const settings=JSON.parse(readFileSync(config,'utf8'));
+if(!settings.d1_databases[0].database_id || settings.d1_databases[0].database_id.startsWith('REPLACE')) throw new Error('Fill your D1 database ID before deploying.');
+execFileSync('npm',['run','build','--workspace','@mclab/web'],{cwd:root,stdio:'inherit'});
+execFileSync(resolve(root,'node_modules/.bin/wrangler'),['deploy','--config',config],{cwd:root,stdio:'inherit'});

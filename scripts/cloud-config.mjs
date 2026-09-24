@@ -1,0 +1,11 @@
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
+const root=fileURLToPath(new URL('../',import.meta.url));
+const path=resolve(root,'.runtime/wrangler.jsonc');
+if(existsSync(path)) throw new Error('The private .runtime/wrangler.jsonc already exists. Edit it directly; it was not overwritten.');
+const config=JSON.parse(readFileSync(resolve(root,'apps/worker/wrangler.jsonc'),'utf8'));
+config.main=resolve(root,'apps/worker/src/index.ts');config.assets.directory=resolve(root,'apps/web/dist');config.$schema=resolve(root,'node_modules/wrangler/config-schema.json');
+config.d1_databases[0].migrations_dir=resolve(root,'migrations');config.d1_databases[0].database_id='REPLACE_WITH_YOUR_D1_ID';config.vars.ENVIRONMENT='production';
+mkdirSync(resolve(root,'.runtime'),{recursive:true});writeFileSync(path,JSON.stringify(config,null,2)+'\n',{mode:0o600});
+console.log('Created ignored .runtime/wrangler.jsonc. Follow README deployment steps to create your resources and fill your D1 ID.');
