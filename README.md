@@ -6,6 +6,23 @@ An open-source application by MC Lab, with a free product-data checker and a ful
 
 [Try MC Lab’s free hosted check](https://check.geo.mclab.party/) · [Self-host](#quick-start) · [Configure models](#your-providers-and-models) · [Professional diagnosis](https://geo.mclab.party/)
 
+## See it in action
+
+Paste a product URL, review missing data, inspect the evidence, and recheck. This 24-second edited screen capture shows the actual self-hosted interface with a **fictional demo fixture**. It demonstrates the free product-data checker, not an AI shopping result; no storefront or model was queried.
+
+[![Watch the product-data check walkthrough](docs/media/product-check-demo.gif)](docs/media/product-check-demo.mp4)
+
+[Watch or download the MP4](docs/media/product-check-demo.mp4) · [Open the full product-data report screenshot](docs/media/product-data-report.png)
+
+<details>
+<summary>Example product-data report — fictional demo product</summary>
+
+The example flags a missing SKU and identifies shipping/return information that is not present in the fixture. Rechecking unchanged data shows no improvements or regressions. These are data checks, not an AI visibility score.
+
+![Product-data report for a fictional canvas tote, showing checks, evidence limits and the suggested SKU fix](docs/media/product-data-report.png)
+
+</details>
+
 ## What you get
 
 | Product-data check — no AI calls | Recorded AI diagnostic — your provider costs |
