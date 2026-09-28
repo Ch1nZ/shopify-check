@@ -22,7 +22,7 @@ const handler = {
       headers.set("X-Request-Id", requestId);
       headers.set("X-Content-Type-Options", "nosniff");
       headers.set("X-Frame-Options", "DENY");
-      headers.set("Referrer-Policy", "no-referrer");
+      if (!headers.has("Referrer-Policy")) headers.set("Referrer-Policy", "no-referrer");
       headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
 
       console.log(

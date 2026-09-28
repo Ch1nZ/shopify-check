@@ -1,3 +1,4 @@
+import { feedbackRoute } from './feedback';
 import { selfHostRoute } from "./self-host";
 import {
   CONTRACT_VERSIONS,
@@ -79,6 +80,8 @@ const MAX_JSON_BYTES = 16_384;
 export async function routeRequest(request: Request, env: Env): Promise<Response> {
   const selfHost = await selfHostRoute(request, env);
   if (selfHost) return selfHost;
+  const feedback = await feedbackRoute(request, env);
+  if (feedback) return feedback;
   const url = new URL(request.url);
 
   if (request.method === "GET" && url.pathname === "/api/v1/health") {
@@ -788,7 +791,7 @@ type PreflightResult = {
   reason?: string;
 };
 
-async function readBoundedJson(request: Request): Promise<unknown> {
+export async function readBoundedJson(request: Request): Promise<unknown> {
   const contentLength = request.headers.get("content-length");
   if (contentLength && Number(contentLength) > MAX_JSON_BYTES) {
     throw new HttpError("REQUEST_TOO_LARGE", "Request body is too large.", 413);
@@ -806,7 +809,7 @@ async function readBoundedJson(request: Request): Promise<unknown> {
   }
 }
 
-async function readBoundedText(
+export async function readBoundedText(
   stream: ReadableStream<Uint8Array> | null,
   maxBytes: number,
 ): Promise<string> {

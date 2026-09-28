@@ -342,7 +342,7 @@ export function renderOwnerStatsPage(board: OwnerStatsBoard | null, options?: {
   const error = options?.error ? `<p class="error">${escapeHtml(options.error)}</p>` : "";
   if (!board) {
     return ownerPage(`
-      <h1>Owner stats</h1>
+      <h1>Owner stats</h1><p><a href="/owner/feedback">Feedback inbox</a></p>
       <p>Private Self-Check board. Not linked from the public site.</p>
       ${error}
       <form method="post" action="/owner/stats">
@@ -380,7 +380,7 @@ export function renderOwnerStatsPage(board: OwnerStatsBoard | null, options?: {
       </table>`;
 
   return ownerPage(`
-    <h1>Owner stats</h1>
+    <h1>Owner stats</h1><p><a href="/owner/feedback">Feedback inbox</a></p>
     <p>Self-Check first-party counts. Generated ${escapeHtml(board.generated_at)}.</p>
     ${error}
     <form method="post" action="/owner/stats">

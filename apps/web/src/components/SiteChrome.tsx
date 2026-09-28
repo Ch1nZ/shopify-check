@@ -55,6 +55,7 @@ export function SiteFooter() {
     <footer className="site-footer">
       <p>MC Lab</p>
       <nav aria-label="Legal">
+        <a href="#feedback">Feedback</a>
         <a href="https://github.com/Ch1nZ/shopify-check">Open source · self-host</a>
         <a href="/privacy/">Privacy</a>
         <a href="/terms/">Terms</a>
