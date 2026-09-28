@@ -67,7 +67,7 @@ async function ownerFeedback(request: Request, env: Env): Promise<Response> {
     const body=await readBoundedText(request.body,16384);form=new URLSearchParams(body);
   }
   const token=form.get('token') ?? request.headers.get('authorization')?.replace(/^Bearer /,'') ?? '';
-  if(!await ownerStatsAuthorized(request,env,token)) return ownerStatsResponse(page(`<h1>Self-Check feedback</h1><p>Private owner dashboard.</p>${request.method==='POST'?'<p>Token rejected.</p>':''}<form method="post"><label>Owner token <input type="password" name="token" required autocomplete="off"></label><button>Open feedback</button></form>`),request.method==='POST'?401:200);
+  if(!await ownerStatsAuthorized(request,env,token)) return feedbackPage(page(`<h1>Self-Check feedback</h1><p>Private owner dashboard.</p>${request.method==='POST'?'<p>Token rejected.</p>':''}<form method="post"><label>Owner token <input type="password" name="token" required autocomplete="off"></label><button>Open feedback</button></form>`),request.method==='POST'?401:200);
   if(request.method==='POST' && form.has('id')) {
     const id=z.uuid().safeParse(form.get('id'));
     if(!id.success)return json('Invalid feedback reference.',400);
@@ -80,6 +80,13 @@ async function ownerFeedback(request: Request, env: Env): Promise<Response> {
   }
   const rows=await env.DB.prepare('SELECT * FROM hosted_feedback ORDER BY created_at DESC LIMIT 100').all<Feedback>();
   const cards=rows.results.map(row=>`<article id="feedback-${escape(row.id)}"><h2>${escape(categories[row.category])}</h2><p>${escape(row.created_at)} · ${escape(row.status.replace('_',' '))} · Notification: ${escape(row.notification_status==='sent'?'accepted by email provider':row.notification_status)}</p><p class="message">${escape(row.message)}</p><p>Reply email: ${row.email?`<a href="mailto:${escape(row.email)}">${escape(row.email)}</a>`:'Not provided'}</p>${row.product_url?`<p>Product: <a href="${escape(row.product_url)}" rel="noreferrer">${escape(row.product_url)}</a></p>`:''}${row.task_id?`<p>Diagnostic reference: <code>${escape(row.task_id)}</code></p>`:''}<small>Feedback ID: ${escape(row.id)}</small><form method="post"><input type="hidden" name="token" value="${escape(token)}"><input type="hidden" name="id" value="${escape(row.id)}"><label>Status <select name="status">${['new','in_progress','resolved'].map(s=>`<option value="${s}"${s===row.status?' selected':''}>${s.replace('_',' ')}</option>`).join('')}</select></label><button name="action" value="status">Save status</button>${row.notification_status!=='sent'?'<button name="action" value="retry">Retry notification</button>':''}</form></article>`).join('');
-  return ownerStatsResponse(page(`<h1>Self-Check feedback</h1><p><a href="/owner/stats">Owner stats</a> · Latest 100 submissions. Emails are for replying to feedback only.</p>${cards || '<p>No feedback yet.</p>'}`));
+  return feedbackPage(page(`<h1>Self-Check feedback</h1><p><a href="/owner/stats">Owner stats</a> · Latest 100 submissions. Emails are for replying to feedback only.</p>${cards || '<p>No feedback yet.</p>'}`));
 }
 function page(content: string) { return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Private feedback · MC Lab</title><style>body{font:16px system-ui;color:#20332f;background:#f6f5ef;max-width:960px;margin:40px auto;padding:20px}article{background:white;border:1px solid #d5dfd7;border-radius:12px;padding:24px;margin:20px 0;overflow-wrap:anywhere}.message{white-space:pre-wrap}input,select,button{font:inherit;padding:10px;margin:8px}button{cursor:pointer}a{color:#235d4b}code{word-break:break-all}</style></head><body>${content}</body></html>`; }
+
+// Same-origin referrers preserve the browser Origin on authenticated form posts.
+function feedbackPage(html: string, status = 200): Response {
+  const response = ownerStatsResponse(html, status);
+  response.headers.set("Referrer-Policy", "same-origin");
+  return response;
+}

@@ -1,5 +1,6 @@
 import { applyD1Migrations, env, type D1Migration } from 'cloudflare:test';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
+import worker from '../src/index';
 import { feedbackRoute } from '../src/feedback';
 import { createAccountSession } from '../src/credits';
 const testEnv = env as Env & { TEST_DB: D1Database; TEST_MIGRATIONS: D1Migration[] };
@@ -59,6 +60,7 @@ it('protects the inbox and status changes, escapes visitor text',async()=>{
  expect((await row(data.id))?.status).toBe('resolved');
  const html=await changed!.text();expect(html).toContain('&lt;script&gt;');expect(html).not.toContain(data.message);
  expect(changed!.headers.get('Cache-Control')).toContain('no-store');
+ expect(changed!.headers.get('Referrer-Policy')).toBe('same-origin');
  expect((await feedbackRoute(owner({id:data.id,status:'arbitrary'}),runtime()))?.status).toBe(400);
 });
 it('accepts a diagnostic reference only from its owning browser',async()=>{
@@ -71,4 +73,10 @@ it('accepts a diagnostic reference only from its owning browser',async()=>{
  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response('{}')));
  expect((await feedbackRoute(request(data,{Cookie:session.setCookie!.split(';')[0]!}),rt))?.status).toBe(201);
  expect((await row(data.id))?.task_id).toBe(jobId);
+});
+
+it("preserves the inbox form referrer policy through the Worker response wrapper", async () => {
+ const response = await worker.fetch(new Request("https://checker.example/owner/feedback"), runtime());
+ expect(response.headers.get("Referrer-Policy")).toBe("same-origin");
+ expect(response.headers.get("Content-Security-Policy")).toContain("form-action 'self'");
 });
