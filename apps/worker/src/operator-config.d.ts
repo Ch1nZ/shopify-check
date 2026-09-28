@@ -1,4 +1,5 @@
 interface Env {
+  FEEDBACK_EMAIL_TO?: string;
   MODEL_CONFIG?: string;
   SELF_HOST_ACCESS_TOKEN?: string;
   OPENROUTER_API_KEY?: string;

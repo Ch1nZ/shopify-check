@@ -166,6 +166,12 @@ Tests use synthetic fixtures and mocked model responses. Adapter contract tests 
 
 Use [MC Lab's hosted Self-Check](https://check.geo.mclab.party/) for the free preview and optional paid recorded diagnostics without managing infrastructure. Use [professional diagnosis](https://geo.mclab.party/) for deeper investigation and a focused fix-and-retest plan. Both are optional; neither is required to use this project.
 
+## Feedback and support
+
+Found a bug or have a feature request? [Open a GitHub Issue](https://github.com/Ch1nZ/shopify-check/issues). For private feedback, email [hello@mclab.party](mailto:hello@mclab.party). Please don’t include API keys, personal information or private diagnostic reports in public issues.
+
+The feedback form on MC Lab’s hosted Self-Check sends private feedback to MC Lab. It is disabled on self-hosted deployments; those installations do not send feedback or contact details to MC Lab automatically.
+
 ## License
 
 [Apache-2.0](LICENSE), copyright MC Lab contributors. The license covers the application code, including its diagnostic workflow. It does not grant MC Lab trademark rights. Shopify is a trademark of Shopify Inc.; this independent project is not affiliated with or endorsed by Shopify.

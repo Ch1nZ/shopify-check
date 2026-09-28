@@ -1,3 +1,4 @@
+import { Feedback } from './components/Feedback';
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { createRoot } from "react-dom/client";
@@ -378,6 +379,8 @@ function App() {
           artifactLinks={result.artifact_links}
         />
       ) : null}
+
+      <Feedback taskId={task ? taskId ?? undefined : undefined} productUrl={preview?.product_url} />
 
       <FreeCheckQuestions />
       <HowItWorks freeCheckEnabled={freeCheck.enabled} />
