@@ -427,4 +427,3 @@ function formatPreviewValue(
   if (typeof value === "boolean") return value ? "Yes" : "No";
   return String(value);
 }
-
