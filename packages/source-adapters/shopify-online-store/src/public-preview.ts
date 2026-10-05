@@ -37,6 +37,8 @@ export type PublicPreviewFinding = {
 };
 
 export type PublicProductPreview = {
+  requested_url?: string;
+  price_context?: ShopifyCollection["record"]["price_context"];
   status: "complete" | "partial";
   product_url: string;
   captured_at: string;
@@ -57,6 +59,8 @@ export function publicProductPreview(collection: ShopifyCollection): PublicProdu
   return {
     status: collection.technicalCheck.status,
     product_url: collection.record.final_url,
+    requested_url: collection.record.requested_url,
+    price_context: collection.record.price_context,
     captured_at: collection.record.captured_at,
     rule_catalog_version: PREVIEW_RULE_CATALOG_VERSION,
     fields: profile.previewFields,

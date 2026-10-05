@@ -33,6 +33,8 @@ import {
   type PublicProductPreview,
 } from "@mclab/shopify-online-store";
 
+import { evidenceStateLabel, priceScopeLabel } from "../preview-evidence";
+
 import { trackConversion } from "../analytics";
 
 export type FreeProductPreview = PublicProductPreview;
@@ -164,6 +166,8 @@ export function FreePreviewResult({
       <p className="preview-share-url">
         <a href={preview.product_url} target="_blank" rel="noreferrer">{preview.product_url}</a>
       </p>
+      {preview.requested_url && preview.requested_url !== preview.product_url ? <p>Submitted URL: <a href={preview.requested_url} target="_blank" rel="noreferrer">{preview.requested_url}</a> · Resolved URL shown above.</p> : null}
+      {preview.price_context ? <p>{priceScopeLabel(preview.price_context)} {preview.price_context.currency_sources?.length ? `Currency evidence: ${preview.price_context.currency_sources.join(" · ")}.` : "Currency has no explicit source evidence."}</p> : null}
       <div className="free-preview-heading">
         <div>
           <span>FREE PRODUCT-DATA PREVIEW</span>
@@ -185,7 +189,7 @@ export function FreePreviewResult({
             <article key={name} style={{ "--field-idx": index } as React.CSSProperties}>
               <span>{name}</span>
               <strong>{field.state === "conflicted" ? "Sources disagree" : formatPreviewValue(name, field.value, preview.fields.currency.value)}</strong>
-              <small className={`preview-state state-${field.state}`}>{field.state.replaceAll("_", " ")}</small>
+              <small className={`preview-state state-${field.state}`}>{evidenceStateLabel(field.state)}</small>
             </article>
           );
         })}
@@ -282,11 +286,12 @@ export function FreePreviewResult({
             {preview.finding_counts
               ? ` · ${preview.finding_counts.error} error${preview.finding_counts.error === 1 ? "" : "s"}, ${preview.finding_counts.warning} warning${preview.finding_counts.warning === 1 ? "" : "s"}`
               : ""}
+            {preview.finding_counts?.info ? ` · ${preview.finding_counts.info} informational note${preview.finding_counts.info === 1 ? "" : "s"}` : ""}
           </summary>
           <ul>
             {findings.map((finding) => (
               <li key={finding.definition_id ?? `${finding.code}:${finding.message}`} className={`severity-${finding.severity} status-${finding.status}`}>
-                <small>{finding.status && finding.status !== "present" ? finding.status : finding.severity}</small>
+                <small>{finding.status === "missing" && !finding.relevant ? "not required" : finding.status === "missing" && ["SHIPPING_NOT_IN_CAPTURE", "RETURNS_NOT_IN_CAPTURE"].includes(finding.code) ? "not found in structured data" : `${finding.severity} · ${finding.status}`}</small>
                 <div>
                   <span>{finding.message}</span>
                   {finding.evidence?.length ? (
@@ -335,7 +340,7 @@ export function FreePreviewFailure({ message }: { message: string }) {
       <p>{message}</p>
       <details className="preview-recovery" open>
         <summary>Accepted Shopify product URLs</summary>
-        <p>Use a live product page that ends in <code>/products/{"{handle}"}</code>. Collection pages, homepages, password pages, drafts, and admin URLs will not work. Redirects and 404s also fail until you paste the current product URL.</p>
+        <p>Use a live product page that ends in <code>/products/{"{handle}"}</code>. Collection pages, homepages, password pages, drafts, and admin URLs will not work. Product redirects are followed while preserving variant context; redirects to non-product pages and 404s need the current product URL.</p>
         <p>Accepted patterns:</p>
         <ul>
           {FREE_PREVIEW_URL_EXAMPLES.map((url) => (
@@ -417,7 +422,7 @@ function formatPreviewValue(
         return `${currency} ${amount.toFixed(2)}`;
       }
     }
-    return amount.toFixed(2);
+    return `${amount.toFixed(2)} (currency unresolved)`;
   }
   if (typeof value === "boolean") return value ? "Yes" : "No";
   return String(value);

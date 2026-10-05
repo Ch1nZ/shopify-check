@@ -57,7 +57,18 @@ export type TechnicalCheck = {
   findings: TechnicalFinding[];
 };
 
+export type PriceContext = {
+  scope: "variant" | "product_minimum" | "unresolved_variant";
+  variant_id: string | null;
+  variant_title: string | null;
+  minimum_minor: number | null;
+  maximum_minor: number | null;
+  currency: string | null;
+  currency_sources?: string[];
+};
+
 export type ProductRecord = {
+  price_context?: PriceContext;
   schema_version: "product-record/1.0";
   requested_url: string;
   final_url: string;
@@ -99,6 +110,7 @@ export type RawSnapshot = {
 };
 
 export type ParsedHtml = {
+  shopifyCurrency?: string | null;
   canonicalUrl: string | null;
   title: string | null;
   metaDescription: string | null;

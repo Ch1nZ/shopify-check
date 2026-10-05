@@ -106,7 +106,7 @@ describe("deterministic parsing and normalization", () => {
     });
 
     expect(record.fields.title.state).toBe("verified");
-    expect(record.fields.price).toMatchObject({ state: "verified", value: 1999 });
+    expect(record.fields.price).toMatchObject({ state: "single_source", value: 1999 });
     expect(record.fields.currency.state).toBe("conflicted");
     expect(record.technical_findings.map((finding) => finding.code)).toEqual(
       expect.arrayContaining(["FIELD_CONFLICT"]),

@@ -68,11 +68,19 @@ export function parseProductHtml(html: string): ParsedHtml {
     })
     .flatMap((element) => splitDirectives($(element).attr("content")));
 
+  // Read an explicit ISO currency from Shopify runtime data, never a money symbol.
+  const currencyAssignment = $("script").toArray().map((element) => $(element).text())
+    .flatMap((script) => [...script.matchAll(/Shopify\.currency\s*=\s*(\{[^;]*?\})\s*;/g)]);
+  const currencies = currencyAssignment.flatMap((match) => {
+    try { const active = JSON.parse(match[1]!).active; return typeof active === "string" && /^[A-Z]{3}$/.test(active) ? [active] : []; } catch { return []; }
+  });
+  const shopifyCurrency = new Set(currencies).size === 1 ? currencies[0]! : null;
   $("script, style, noscript, template, svg").remove();
   const visibleText = normalizeWhitespace($("body").text());
   const lowerText = visibleText.toLowerCase();
 
   return {
+    shopifyCurrency,
     canonicalUrl: firstAttribute($, "link[rel~='canonical']", "href"),
     title: firstText($, "title"),
     metaDescription: firstAttribute($, "meta[name='description']", "content"),

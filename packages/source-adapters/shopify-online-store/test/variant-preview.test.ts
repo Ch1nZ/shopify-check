@@ -19,7 +19,7 @@ function fixture(mutate: (products: Record<string, any>[]) => void = () => {}) {
       priceCurrency: "INR", availability: `https://schema.org/${variant.available ? "InStock" : "OutOfStock"}` },
   }));
   mutate(products);
-  const html = parseProductHtml(`<link rel="canonical" href="${url}"><h1>Cushion foundation</h1><script type="application/ld+json">${JSON.stringify({ "@type": "ProductGroup", hasVariant: products })}</script>`);
+  const html = parseProductHtml(`<script>Shopify.currency = {"active":"INR"};</script><link rel="canonical" href="${url}"><h1>Cushion foundation</h1><script type="application/ld+json">${JSON.stringify({ "@type": "ProductGroup", hasVariant: products })}</script>`);
   const ajax = parseShopifyAjax(JSON.stringify({ id: 42, handle: "cushion", title: "Cushion foundation", type: "Face", vendor: "Brand", available: true, price: 84900, featured_image: image, images: [image], variants }));
   const record = normalizeProduct({ requestedUrl: url, finalUrl: url, capturedAt, html, ajax });
   const technicalCheck: TechnicalCheck = { schema_version: "technical-check/1.0", product_url: url,
