@@ -168,11 +168,14 @@ export function normalizeProduct(input: NormalizeInput): ProductRecord {
   // the first SKU or the product-wide "any variant available" value.
   if (ajax) {
     for (const [name, variantKey] of [
-      ["sku", "sku"], ["barcode", "barcode"], ["price", "price_minor"], ["availability", "available"],
+      ["sku", "sku"], ["barcode", "barcode"], ["availability", "available"],
     ] as const) {
       fields[name] = variantField(fields[name], variantKey, input, observed);
     }
   }
+  const pricing = scopedPricing(input, observed);
+  fields.price = pricing.price;
+  fields.currency = pricing.currency;
   const imageKey = shopifyImageKey(input);
   const imageObservations = fields.image.observations;
   const catalogImages = new Set(imageObservations.filter((item) => item.source === "shopify_ajax").map((item) => imageKey(item.value)));
@@ -206,6 +209,7 @@ export function normalizeProduct(input: NormalizeInput): ProductRecord {
 
   return {
     schema_version: CONTRACT_VERSIONS.productRecord,
+    price_context: pricing.context,
     requested_url: input.requestedUrl,
     final_url: input.finalUrl,
     captured_at: input.capturedAt,
@@ -394,6 +398,20 @@ function variantField(
   input: NormalizeInput,
   observed: (source: SourceKind, path: string, value: unknown) => EvidenceObservation[],
 ): NormalizedField {
+  const selectedId = new URL(input.finalUrl).searchParams.get("variant") ?? new URL(input.requestedUrl).searchParams.get("variant");
+  const selected = input.ajax?.variants.find((variant) => variant.id === selectedId);
+  if (selectedId) {
+    if (!selected) return field([], true);
+    const relevant = original.observations.filter((observation) => {
+      if (observation.source === "shopify_ajax") return false;
+      const match = /^products\[(\d+)\](?:\.offers\[(\d+)\])?/.exec(observation.path);
+      const product = match ? input.html.jsonLdProducts[Number(match[1])] : undefined;
+      const offer = product && match?.[2] !== undefined ? jsonLdOffers(product)[Number(match[2])] : undefined;
+      const variant = (offer && matchedVariant(offer, input)) || (product && matchedVariant(product, input));
+      return variant?.id === selectedId;
+    });
+    return field([...observed("shopify_ajax", `variants[${input.ajax!.variants.indexOf(selected)}].${key}`, selected[key]), ...relevant]);
+  }
   const unscoped: EvidenceObservation[] = [];
   const groups = new Map<ProductVariant, EvidenceObservation[]>();
   for (const observation of original.observations) {
@@ -450,4 +468,61 @@ function shopifyImageKey(input: NormalizeInput): (value: unknown) => string {
       return `shopify:${path}?${url.searchParams.toString()}`;
     } catch { return String(value); }
   };
+}
+
+function scopedPricing(input: NormalizeInput, observed: (source: SourceKind, path: string, value: unknown) => EvidenceObservation[]) {
+  const variants = input.ajax?.variants ?? [];
+  const selectedId = new URL(input.finalUrl).searchParams.get("variant") ?? new URL(input.requestedUrl).searchParams.get("variant");
+  const selected = variants.find((variant) => variant.id === selectedId);
+  const scope = selectedId ? selected ? "variant" : "unresolved_variant" : "product_minimum";
+  const prices = variants.map((variant) => variant.price_minor).filter((price): price is number => price !== null);
+  const minimum = prices.length ? Math.min(...prices) : input.ajax?.priceMinor ?? null;
+  const maximum = prices.length ? Math.max(...prices) : null;
+  const offers = input.html.jsonLdProducts.flatMap((product, productIndex) => jsonLdOffers(product).map((offer, offerIndex) => ({
+    offer, productIndex, offerIndex, variant: matchedVariant(offer, input) ?? matchedVariant(product, input),
+  }))).filter(({ variant }) => !selectedId || variant?.id === selectedId);
+  const iso = (value: unknown) => typeof value === "string" && /^[A-Z]{3}$/.test(value.trim().toUpperCase()) ? value.trim().toUpperCase() : null;
+  const runtimeCurrency = iso(input.html.shopifyCurrency);
+  const metaCurrency = iso(input.html.og["product:price:currency"]);
+  const currency = field([
+    ...observed("html_meta", "Shopify.currency.active", runtimeCurrency),
+    ...observed("html_meta", "product:price:currency", metaCurrency),
+    ...offers.flatMap(({ offer, productIndex, offerIndex }) => observed("json_ld", `products[${productIndex}].offers[${offerIndex}].priceCurrency`, iso(offer.priceCurrency))),
+  ]);
+  const context: NonNullable<ProductRecord["price_context"]> = {
+    scope, variant_id: selectedId, variant_title: selected?.title ?? null,
+    minimum_minor: minimum, maximum_minor: maximum, currency: typeof currency.value === "string" ? currency.value : null,
+    currency_sources: [...new Set(currency.observations.map((item) => item.path === "Shopify.currency.active" ? "Shopify.currency.active" : item.path.includes("priceCurrency") ? "Offer.priceCurrency" : "product:price:currency"))],
+  };
+  if (scope === "unresolved_variant") return { price: field([], true), currency, context };
+  const baseline = selected ? selected.price_minor : minimum;
+  const baselinePath = selected ? `variants[${variants.indexOf(selected)}].price_minor` : "price (product minimum)";
+  const baselineEvidence = observed("shopify_ajax", baselinePath, baseline);
+  const offerEvidence = offers.flatMap(({ offer, productIndex, offerIndex }) => observed("json_ld", `products[${productIndex}].offers[${offerIndex}].price`, decimalPrice(offer.price ?? offer.lowPrice)));
+  const metaEvidence = observed("html_meta", "product:price:amount", decimalPrice(input.html.og["product:price:amount"]));
+  // Ajax carries no currency: compare only when explicit Shopify runtime currency agrees.
+  const comparisons = offers.filter(({ offer, variant }) => runtimeCurrency && iso(offer.priceCurrency) === runtimeCurrency && (variant || variants.length <= 1));
+  const checks = comparisons.map(({ offer, productIndex, offerIndex, variant }) => field([
+    ...observed("shopify_ajax", variant ? `variants[${variants.indexOf(variant)}].price_minor` : baselinePath, variant ? variant.price_minor : baseline),
+    ...observed("json_ld", `products[${productIndex}].offers[${offerIndex}].price`, decimalPrice(offer.price ?? offer.lowPrice)),
+  ]));
+  const pageCheck = runtimeCurrency && metaCurrency === runtimeCurrency && (selected || variants.length <= 1) ? field([...baselineEvidence, ...metaEvidence]) : field([]);
+  const offerGroups = new Map<string, EvidenceObservation[]>();
+  for (const { offer, productIndex, offerIndex, variant } of offers) {
+    const code = iso(offer.priceCurrency);
+    if (!variant || !code) continue;
+    const key = `${variant.id}:${code}`;
+    offerGroups.set(key, [...offerGroups.get(key) ?? [], ...observed("json_ld", `products[${productIndex}].offers[${offerIndex}].price`, decimalPrice(offer.price ?? offer.lowPrice))]);
+  }
+  checks.push(...[...offerGroups.values()].map((items) => field(items)).filter((check) => check.state === "conflicted"));
+  const observations = [...baselineEvidence, ...offerEvidence, ...metaEvidence];
+  if (checks.some((check) => check.state === "conflicted") || pageCheck.state === "conflicted") return { price: { state: "conflicted" as const, value: null, observations: [...checks.filter((check) => check.state === "conflicted").flatMap((check) => check.observations), ...pageCheck.state === "conflicted" ? pageCheck.observations : [], ...observations] }, currency, context };
+  if (baseline !== null) {
+    const covered = selected ? comparisons.some(({ variant }) => variant?.id === selected.id || variants.length === 1)
+      : variants.length > 0 && variants.every((variant) => comparisons.some((item) => item.variant?.id === variant.id || variants.length === 1));
+    return { price: { state: currency.state !== "conflicted" && (covered && checks.every((check) => check.state === "verified") || pageCheck.state === "verified") ? "verified" as const : "single_source" as const, value: baseline, observations }, currency, context };
+  }
+  const amounts = offers.filter(({ variant }) => !variant).map(({ offer }) => decimalPrice(offer.price ?? offer.lowPrice)).filter((amount): amount is number => amount !== null);
+  const value = currency.value !== null && amounts.length ? Math.min(...amounts) : null;
+  return { price: { state: value === null ? "incomplete" as const : "single_source" as const, value, observations }, currency, context: { ...context, minimum_minor: value, maximum_minor: amounts.length ? Math.max(...amounts) : null } };
 }

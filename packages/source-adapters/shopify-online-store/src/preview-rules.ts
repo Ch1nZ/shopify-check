@@ -1,6 +1,6 @@
 import type { NormalizedField, ProductRecord, ShopifyCollection, SourceKind, TechnicalFinding } from "./types";
 
-export const PREVIEW_RULE_CATALOG_VERSION = "2026-09-20.2";
+export const PREVIEW_RULE_CATALOG_VERSION = "2026-10-05.1";
 
 export type FindingStatus = "missing" | "conflicting" | "unavailable" | "present";
 
@@ -85,6 +85,28 @@ export function evaluatePreviewCapture(collection: ShopifyCollection): {
     ...collection.record.technical_findings.map((finding) => enrichTechnicalFinding(finding, collection)),
     ...presenceFindings(presence, collection.record),
   ];
+  for (const item of presence) {
+    if (["shipping", "returns", "warranty", "gtin"].includes(item.key) || item.state === "present") continue;
+    if (item.state === "conflicting" && findings.some((finding) => finding.definition_id === `finding:FIELD_CONFLICT:${item.field}`)) continue;
+    findings.push({ definition_id: `presence:${item.key}`, definition_version: PREVIEW_RULE_CATALOG_VERSION,
+      code: `PRESENCE_${item.key.toUpperCase()}`, status: item.state, severity: presenceSeverity(item), relevant: item.relevant,
+      message: item.state === "unavailable" ? `${item.label} could not be read because a product-page source was incomplete.`
+        : item.state === "conflicting" ? `Captured sources disagree on ${item.label}.` : `${item.label} was not found in captured product data.`,
+      evidence: presenceEvidence(item, collection.record), guidance: presenceGuidance(item.key),
+    });
+  }
+  for (const [name, key] of [["title", "title"], ["category", "product_type_category"], ["price", "price"], ["currency", "currency"], ["availability", "availability"]] as const) {
+    const field = collection.record.fields[key];
+    if (!["missing", "incomplete"].includes(field.state)) continue;
+    findings.push({ definition_id: `field:${name}`, definition_version: PREVIEW_RULE_CATALOG_VERSION,
+      code: `FIELD_${name.toUpperCase()}`, severity: field.state === "missing" ? "error" : "warning",
+      status: field.state === "missing" ? "missing" : "unavailable", relevant: true,
+      message: `${name[0]!.toUpperCase()}${name.slice(1)} ${field.state === "missing" ? "was not found in captured data" : "could not be resolved from the captured sources"}.`,
+      evidence: [{ field: key, source: "captured_data", path: key }],
+      guidance: name === "currency" ? "Inspect explicit currency codes in Shopify runtime data and Offer.priceCurrency; a dollar symbol does not establish a currency."
+        : "Review the submitted product or variant in Shopify admin → Products and its theme structured data. Recheck incomplete sources before adding catalog fields.",
+    });
+  }
   return { presence, findings: dedupeFindings(findings) };
 }
 
@@ -172,14 +194,17 @@ function presenceFindings(presence: EvaluatedPresence[], record: ProductRecord):
     code: string,
     message: string,
     guidance: string,
-    severity: EvaluatedPreviewFinding["severity"] = "info",
   ) => {
     if (item.state === "present") return;
+    if (item.state === "conflicting" && record.technical_findings.some((finding) => {
+      const label = conflictFieldLabel(finding.message);
+      return finding.code === "FIELD_CONFLICT" && (CONFLICT_FIELD_KEYS[label] ?? label.replace(/\s+/g, "_")) === item.field;
+    })) return;
     findings.push({
       definition_id: `presence:${item.key}`,
       definition_version: PREVIEW_RULE_CATALOG_VERSION,
       code,
-      severity: item.state === "unavailable" ? "info" : severity,
+      severity: presenceSeverity(item),
       status: item.state,
       message,
       evidence: presenceEvidence(item, record),
@@ -199,7 +224,6 @@ function presenceFindings(presence: EvaluatedPresence[], record: ProductRecord):
           ? "Captured product sources disagree about shipping details."
           : "Shipping details were not found in product structured data. Visible shipping text and separate policy pages have not been verified.",
       "This preview only inspects the submitted product URL. Check Shopify admin → Settings → Shipping and delivery, or Online Store → Pages / Policies → Shipping policy. To expose shipping on the product itself, add OfferShippingDetails in the product template JSON-LD.",
-      "warning",
     );
   }
 
@@ -214,7 +238,6 @@ function presenceFindings(presence: EvaluatedPresence[], record: ProductRecord):
           ? "Captured product sources disagree about the return policy."
           : "Return-policy details were not found in product structured data. Visible return statements and separate policy pages have not been verified.",
       "Check Shopify admin → Settings → Policies → Refund policy, or the product template JSON-LD hasMerchantReturnPolicy node. A store-wide policy page is outside this product capture.",
-      "warning",
     );
   }
 
@@ -231,7 +254,6 @@ function presenceFindings(presence: EvaluatedPresence[], record: ProductRecord):
             ? "Warranty details weren’t found in the captured product data for this product."
             : "Warranty details weren’t found in the captured product data. This preview does not treat a warranty as required for this product.",
       "Shopify has no dedicated warranty field. If this product needs one, add it in the product description or a WarrantyPromise JSON-LD node on the product template. Skip this when warranty does not apply.",
-      warranty.relevant ? "warning" : "info",
     );
   }
 
@@ -248,7 +270,6 @@ function presenceFindings(presence: EvaluatedPresence[], record: ProductRecord):
             ? "No GTIN/barcode was found on the captured variants for this product."
             : "No GTIN/barcode was found in the captured product data. This preview does not treat a barcode as required for this product.",
       "Shopify admin → Products → this product → Variants → Barcode (ISBN, UPC, GTIN-13, or GTIN-14). Leave blank for handmade, custom, or digital products that do not have a trade identifier.",
-      gtin.relevant ? "warning" : "info",
     );
   }
 
@@ -503,4 +524,22 @@ function dedupeFindings(findings: EvaluatedPreviewFinding[]): EvaluatedPreviewFi
     unique.push(finding);
   }
   return unique;
+}
+
+
+export function presenceSeverity(item: Pick<EvaluatedPresence, "state" | "key" | "relevant">): "info" | "warning" | "error" {
+  if (item.state === "present" || item.state === "missing" && !item.relevant) return "info";
+  if (item.state === "unavailable" || item.state === "conflicting") return "warning";
+  return ["brand", "sku", "image"].includes(item.key) ? "error" : "warning";
+}
+
+function presenceGuidance(key: string): string {
+  const copy: Record<string, string> = {
+    brand: "Shopify admin → Products → this product → Vendor. Review the brand in Ajax and JSON-LD.",
+    sku: "Shopify admin → Products → this product → Variants → SKU. Give each variant its own SKU.",
+    image: "Shopify admin → Products → this product → Media. Review featured image, og:image and Product.image.",
+    json_ld_product: "Theme product template or SEO app: emit Product JSON-LD on this URL.",
+    json_ld_offer: "Theme product template or SEO app: emit Offer price and availability matching the same Shopify variant and currency.",
+  };
+  return copy[key] ?? "Review the captured source and recheck.";
 }

@@ -1,7 +1,7 @@
 import type { EvidenceState } from "@mclab/contracts";
 
 import type { PublicPreviewFinding, PublicPreviewPresence, PublicProductPreview } from "./public-preview";
-import { PREVIEW_RULE_CATALOG_VERSION, formatFindingEvidence } from "./preview-rules";
+import { PREVIEW_RULE_CATALOG_VERSION, formatFindingEvidence, presenceSeverity } from "./preview-rules";
 import type { RobotsAgentResult } from "./types";
 
 const FIELD_ORDER = ["title", "category", "price", "currency", "availability"] as const;
@@ -198,7 +198,7 @@ function previewChecks(preview: PublicProductPreview): PreviewCheck[] {
       `field:${name}`,
       FIELD_LABELS[name],
       fieldOutcome(field.state),
-      field.state.replaceAll("_", " "),
+      field.state === "verified" ? "Captured sources agree within the compared scope; product truth is not independently verified." : field.state === "single_source" ? "Extracted from one source." : field.state.replaceAll("_", " "),
     ));
   }
 
@@ -254,12 +254,13 @@ function previewChecks(preview: PublicProductPreview): PreviewCheck[] {
     const existingId = fieldKey === "product_type_category" ? "field:category"
       : fieldKey === "vendor_brand" ? "presence:brand" : fieldKey === "barcode" ? "presence:gtin"
       : fieldKey && FIELD_ORDER.includes(fieldKey as typeof FIELD_ORDER[number]) ? `field:${fieldKey}`
+      : fieldKey === "shipping_details" ? "presence:shipping" : fieldKey === "merchant_return_policy" ? "presence:returns"
       : fieldKey ? `presence:${fieldKey}` : undefined;
-    const existing = checks.find((item) => item.id === existingId);
+    const existing = checks.find((item) => item.id === (existingId ?? finding.definition_id));
     const detail = [finding.message, formatFindingEvidence(finding.evidence ?? [])].filter(Boolean).join(" ");
     if (existing) {
       existing.detail = detail;
-      existing.outcome = "warn";
+      existing.outcome = finding.severity === "error" ? "fail" : finding.severity === "warning" ? "warn" : "pass";
       continue;
     }
     checks.push(check(
@@ -503,11 +504,8 @@ function fieldOutcome(state: EvidenceState): PreviewCheckOutcome {
 }
 
 function presenceOutcome(item: PublicPreviewPresence): PreviewCheckOutcome {
-  if (item.state === "present") return "pass";
-  if (item.state === "unavailable" || item.state === "conflicting") return "warn";
-  if (!item.relevant) return "pass";
-  if (item.key === "brand" || item.key === "sku" || item.key === "image") return "fail";
-  return "warn";
+  const severity = presenceSeverity(item);
+  return severity === "error" ? "fail" : severity === "warning" ? "warn" : "pass";
 }
 
 function presenceDetail(item: PublicPreviewPresence): string {

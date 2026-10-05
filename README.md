@@ -166,6 +166,12 @@ Tests use synthetic fixtures and mocked model responses. Adapter contract tests 
 
 Use [MC Lab's hosted Self-Check](https://check.geo.mclab.party/) for the free preview and optional paid recorded diagnostics without managing infrastructure. Use [professional diagnosis](https://geo.mclab.party/) for deeper investigation and a focused fix-and-retest plan. Both are optional; neither is required to use this project.
 
+## v0.1.2 corrective release
+
+Product checks retain submitted/resolved variant context. A selected variant uses its own price and availability; product-level prices are labeled as a captured minimum with a variant range. Price agreement compares the same variant and explicit currency evidence. Currency is read from source codes, never inferred from a dollar symbol. “Sources agree” describes captured evidence, not independently verified product truth.
+
+Issue details, severity counts and data-check outcomes now include missing SKU and other core gaps. Optional GTIN/warranty gaps are informational and labeled as not required. Rule catalog `2026-10-05.1` prevents rechecks from comparing changed definitions.
+
 ## Feedback and support
 
 Found a bug or have a feature request? [Open a GitHub Issue](https://github.com/Ch1nZ/shopify-check/issues). For private feedback, email [hello@mclab.party](mailto:hello@mclab.party). Please don’t include API keys, personal information or private diagnostic reports in public issues.

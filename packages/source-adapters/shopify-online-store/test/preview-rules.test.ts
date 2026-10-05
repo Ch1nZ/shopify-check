@@ -8,6 +8,7 @@ import {
   evaluatePreviewCapture,
   productRelevance,
 } from "../src/preview-rules";
+import { previewReadiness } from "../src/preview-readiness";
 import { publicProductPreview } from "../src/public-preview";
 
 const capturedAt = "2026-09-19T00:00:00.000Z";
@@ -110,6 +111,20 @@ describe("preview rule evaluation", () => {
     expect(warranty?.guidance).toContain("no dedicated warranty field");
   });
 
+  it("counts one warning and one check for conflicting policy evidence", () => {
+    const collection = collectionFrom({ html: necklaceHtml(), ajax: necklaceAjax() });
+    collection.record.fields.shipping_details.state = "conflicted";
+    collection.record.fields.shipping_details.value = null;
+    collection.record.technical_findings.push({ code: "FIELD_CONFLICT", severity: "warning", message: "Sources disagree on shipping details.", evidence_paths: [] });
+    const preview = publicProductPreview(collection);
+    const readiness = previewReadiness(preview);
+    expect(preview.findings.filter((item) => item.definition_id === "finding:FIELD_CONFLICT:shipping_details")).toHaveLength(1);
+    expect(preview.findings.some((item) => item.definition_id === "presence:shipping")).toBe(false);
+    expect(readiness.checks.filter((item) => item.id === "presence:shipping")).toHaveLength(1);
+    expect(readiness.checks.find((item) => item.id === "presence:shipping")?.outcome).toBe("warn");
+    expect(preview.finding_counts.warning).toBe(preview.findings.filter((item) => item.severity === "warning").length);
+  });
+
   it("marks robots and Ajax failures unavailable instead of missing merchant fields", () => {
     const preview = publicProductPreview(collectionFrom({
       html: necklaceHtml(),
@@ -121,6 +136,9 @@ describe("preview rule evaluation", () => {
     expect(preview.findings.find((finding) => finding.code === "ROBOTS_UNAVAILABLE")?.status).toBe("unavailable");
     expect(preview.findings.find((finding) => finding.code === "AJAX_PRODUCT_UNAVAILABLE")?.status).toBe("unavailable");
     expect(preview.presence.find((item) => item.key === "sku")?.state).toBe("unavailable");
+    expect(preview.findings.find((item) => item.definition_id === "presence:sku")).toMatchObject({ status: "unavailable", severity: "warning" });
+    expect(previewReadiness(preview).checks.find((item) => item.id === "presence:sku")?.outcome).toBe("warn");
+    expect(previewReadiness(preview).fixes.some((item) => item.title === "Add a SKU")).toBe(false);
     expect(preview.presence.find((item) => item.key === "gtin")?.state).toBe("unavailable");
     expect(preview.findings.find((finding) => finding.code === "AJAX_PRODUCT_UNAVAILABLE")?.message).toContain(
       "incomplete instead of missing",

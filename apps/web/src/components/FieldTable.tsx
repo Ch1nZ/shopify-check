@@ -1,5 +1,7 @@
 import type { ProductRecord } from "@mclab/shopify-online-store";
 
+import { evidenceStateLabel } from "../preview-evidence";
+
 const FIELD_LABELS: Array<[keyof ProductRecord["fields"], string]> = [
   ["title", "Product title"],
   ["vendor_brand", "Brand / vendor"],
@@ -63,5 +65,5 @@ function formatField(
 }
 
 function labelForState(state: ProductRecord["fields"][keyof ProductRecord["fields"]]["state"]): string {
-  return state.replace("_", " ");
+  return evidenceStateLabel(state);
 }

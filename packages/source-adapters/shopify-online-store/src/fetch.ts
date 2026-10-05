@@ -65,6 +65,11 @@ export async function fetchSnapshot(
       const redirectUrl = validatePublicHttpsUrl(new URL(location, current).toString());
       if (kind !== "robots") {
         try {
+          // Preserve a submitted selection when a same-store product redirect omits it.
+          if (kind === "html" && redirectUrl.origin === current.origin && !redirectUrl.searchParams.has("variant")) {
+            const variant = current.searchParams.get("variant");
+            if (variant) redirectUrl.searchParams.set("variant", variant);
+          }
           current = validatePublicProductUrl(redirectUrl.toString());
         } catch (error) {
           if (error instanceof CollectionError && error.code === "UNSUPPORTED_PRODUCT_PATH") {

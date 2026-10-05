@@ -1,5 +1,7 @@
 import type { ProductRecord, TechnicalCheck, TechnicalFinding } from "@mclab/shopify-online-store";
 
+import { priceScopeLabel } from "../preview-evidence";
+
 import { FieldTable } from "./FieldTable";
 
 export type ArtifactLinks = Partial<Record<
@@ -78,8 +80,9 @@ export function TechnicalReport({
         <div className="section-intro">
           <p className="eyebrow">OBSERVABLE PRODUCT FACTS</p>
           <h3 id="facts-title">What the storefront says.</h3>
-          <p>Verified means at least two different source types agreed. Conflicts remain visible.</p>
+          <p>Sources agree means captured source types agreed within the compared scope. It does not independently verify product truth. Conflicts remain visible.</p>
         </div>
+        {record.price_context ? <p>{priceScopeLabel(record.price_context)}</p> : null}
         <FieldTable record={record} />
       </div>
 
