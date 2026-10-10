@@ -18,7 +18,7 @@ export function SelfCheckFilm() {
 
   return (
     <figure className="self-check-film" id="demo" aria-label="Self-Check in 36 seconds">
-      <div className="film-topline"><span>MEET YOUR AI TEST TEAM</span><span>36 seconds · original beat</span></div>
+      <div className="film-topline"><span>RECORDED AI SHOPPING TEST</span><span>36 seconds</span></div>
       <div className="film-screen">
         <video
           ref={video}
@@ -35,7 +35,7 @@ export function SelfCheckFilm() {
         </video>
         {!started ? (
           <button type="button" className="film-play" onClick={() => void play()} aria-label="Play the 36-second Self-Check film">
-            <span className="film-play-label"><span aria-hidden="true">▶</span> Send in the agents <small>0:36</small></span>
+            <span className="film-play-label"><span aria-hidden="true">▶</span> Watch the walkthrough <small>0:36</small></span>
           </button>
         ) : null}
       </div>

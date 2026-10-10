@@ -1,7 +1,7 @@
 {
   "name": "shopify-check",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "workspaces": [
     "apps/*",
@@ -24,7 +24,8 @@
     "configure": "node scripts/configure.mjs",
     "cloud:config": "node scripts/cloud-config.mjs",
     "db:migrate": "npm run db:migrate --workspace @mclab/worker",
-    "deploy": "node scripts/deploy.mjs"
+    "deploy": "node scripts/deploy.mjs",
+    "test:ui": "npm run test:ui --workspace @mclab/web"
   },
   "devDependencies": {
     "typescript": "7.0.2"

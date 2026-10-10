@@ -10,3 +10,5 @@ node_modules/
 .DS_Store
 .runtime/
 models.local.json
+**/test-results/
+**/playwright-report/

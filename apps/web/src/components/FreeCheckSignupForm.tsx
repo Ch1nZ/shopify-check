@@ -1,5 +1,4 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
+import { useRef, useState } from "react";
 
 export function FreeCheckSignupForm({
   id,
@@ -21,8 +20,11 @@ export function FreeCheckSignupForm({
   const [message, setMessage] = useState<string | null>(null);
   const inputId = id ? `${id}-email` : "signup-email";
 
-  async function requestSignup(event?: FormEvent<HTMLFormElement>) {
-    event?.preventDefault();
+  const input = useRef<HTMLInputElement>(null);
+  const sending = useRef(false);
+  async function requestSignup() {
+    if (sending.current || !input.current?.reportValidity()) return;
+    sending.current = true;
     setPending(true);
     setMessage(null);
     try {
@@ -31,12 +33,14 @@ export function FreeCheckSignupForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const payload = await response.json() as { data?: { message?: string } };
+      const payload = await response.json() as { data?: { message?: string }; error?: { message?: string } };
+      if (!response.ok) throw new Error(payload.error?.message ?? "The verification email could not be requested right now.");
       setMessage(payload.data?.message ?? "If that email can receive mail, a verification link is on its way.");
       setEmail("");
-    } catch {
-      setMessage("The verification email could not be requested right now.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The verification email could not be requested right now.");
     } finally {
+      sending.current = false;
       setPending(false);
     }
   }
@@ -54,6 +58,8 @@ export function FreeCheckSignupForm({
       <label htmlFor={inputId}>Email</label>
       <div className="recovery-row">
         <input
+          ref={input}
+          disabled={pending}
           id={inputId}
           type="email"
           required
@@ -63,7 +69,7 @@ export function FreeCheckSignupForm({
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
-              if (email) void requestSignup();
+              void requestSignup();
             }
           }}
         />

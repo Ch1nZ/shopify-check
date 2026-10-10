@@ -149,7 +149,11 @@ npm run check          # types + regression/integration tests, no real model cal
 npm run build
 npm run privacy:check  # tracked-file scan; also review changes manually
 npm run dry-run
+npx playwright install chromium  # once, for browser regression tests
+npm run test:ui       # hosted UI with synthetic fixtures and intercepted APIs
 ```
+
+Browser tests block external requests and mock mail, checkout and diagnostics. They do not send email, buy credits or call a model. Set `CHROMIUM_PATH` to use an existing Chromium installation.
 
 | Directory | Responsibility |
 | --- | --- |

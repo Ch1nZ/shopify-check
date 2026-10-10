@@ -21,6 +21,7 @@ type CheckoutIntent = {
 };
 
 export function PaddleCheckout({ onEvent }: { onEvent?: (name: "checkout_started" | "checkout_completed") => void }) {
+  const opening = useRef(false);
   const paddleRef = useRef<Paddle | null>(null);
   const [config, setConfig] = useState<CheckoutConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,11 +57,14 @@ export function PaddleCheckout({ onEvent }: { onEvent?: (name: "checkout_started
             if (!active) return;
             if (event.name === "checkout.completed") {
               onEvent?.("checkout_completed");
+              opening.current = false;
               setOpeningPack(null);
               setMessage(`${checkoutConfig.environment === "sandbox" ? "Sandbox payment" : "Payment"} completed. The signed Paddle webhook will be the source of truth for the purchase.`);
             } else if (event.name === "checkout.closed") {
+              opening.current = false;
               setOpeningPack(null);
             } else if (event.name === "checkout.error" || event.name === "checkout.failed") {
+              opening.current = false;
               setOpeningPack(null);
               console.error(JSON.stringify({
                 message: "paddle_checkout_failed",
@@ -99,6 +103,7 @@ export function PaddleCheckout({ onEvent }: { onEvent?: (name: "checkout_started
   }, []);
 
   async function openCheckout(packKey: PackKey) {
+    if (opening.current) return;
     const paddle = paddleRef.current;
     if (!paddle || !config) {
       setError("Checkout is still loading. Please try again.");
@@ -107,6 +112,7 @@ export function PaddleCheckout({ onEvent }: { onEvent?: (name: "checkout_started
 
     setError(null);
     setMessage(null);
+    opening.current = true;
     setOpeningPack(packKey);
     onEvent?.("checkout_started");
     try {
@@ -145,6 +151,7 @@ export function PaddleCheckout({ onEvent }: { onEvent?: (name: "checkout_started
         },
       });
     } catch (caught) {
+      opening.current = false;
       setOpeningPack(null);
       setError(caught instanceof Error ? caught.message : "Checkout could not be opened.");
     }
