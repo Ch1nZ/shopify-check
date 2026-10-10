@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import type { AccountAccessState, CreditBalance, FreeCheckState, ReportHistoryItem } from "../types";
@@ -6,15 +6,20 @@ import { FreeCheckSignupForm } from "./FreeCheckSignupForm";
 
 export function AccountAccess({
   accountAccess,
+  unavailable,
   balance,
   freeCheck,
   onOpenReport,
 }: {
   accountAccess: AccountAccessState | null;
+  unavailable: boolean;
   balance: CreditBalance | null;
   freeCheck: FreeCheckState;
   onOpenReport: (taskId: string) => void;
 }) {
+  const sending = useRef(false);
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [accessError, setAccessError] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const [signupAvailable, setSignupAvailable] = useState(false);
   const [history, setHistory] = useState<ReportHistoryItem[]>([]);
@@ -30,7 +35,7 @@ export function AccountAccess({
       : recoveryState === "invalid"
         ? "That access link is invalid or has expired. Request a new one below."
         : signupState === "success"
-          ? "Email verified. You can run 1 free Self-Check from this browser."
+          ? "Email verified. Your account balance is shown below."
           : signupState === "invalid"
             ? "That verification link is invalid or has expired. Request a new one below."
             : null,
@@ -42,8 +47,8 @@ export function AccountAccess({
   useEffect(() => {
     let active = true;
     void Promise.all([
-      fetch("/api/v1/account/recovery-config").then((response) => response.json()),
-      fetch("/api/v1/account/history").then((response) => response.json()),
+      fetch("/api/v1/account/recovery-config").then((response) => { if (!response.ok) throw new Error("Account service unavailable"); return response.json(); }),
+      fetch("/api/v1/account/history").then((response) => { if (!response.ok) throw new Error("Account service unavailable"); return response.json(); }),
     ]).then(([config, reports]: [
       { data?: { enabled?: boolean; free_check?: { signup_available?: boolean } } },
       { data?: { reports?: ReportHistoryItem[] } },
@@ -54,13 +59,15 @@ export function AccountAccess({
       setHistory(reports.data?.reports ?? []);
       setHistoryLoaded(true);
     }).catch(() => {
-      if (active) setHistoryLoaded(true);
+      if (active) { setHistoryLoaded(true); setAccessError(true); }
     });
     return () => { active = false; };
   }, []);
 
   async function requestLink(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (sending.current) return;
+    sending.current = true;
     setPending(true);
     setMessage(null);
     try {
@@ -69,20 +76,22 @@ export function AccountAccess({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const payload = await response.json() as { data?: { message?: string } };
-      setMessage(payload.data?.message ?? "If that email is linked to a purchase, a secure access link is on its way.");
+      const payload = await response.json() as { data?: { message?: string }; error?: { message?: string } };
+      if (!response.ok) throw new Error(payload.error?.message ?? "The access email could not be requested right now.");
+      setMessage(payload.data?.message ?? "If that email is linked to an account, a secure access link is on its way.");
       setEmail("");
-    } catch {
-      setMessage("The access email could not be requested right now.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The access email could not be requested right now.");
     } finally {
+      sending.current = false;
       setPending(false);
     }
   }
 
   const connectedSummary = remaining
-    ? "1 free Self-Check"
+    ? "1 complimentary AI test"
     : freeCheck?.granted && (balance?.available_credits ?? 0) < 30
-      ? "0 remaining"
+      ? "0 complimentary AI tests remaining"
       : `${balance?.available_credits ?? 0} credits`;
 
   return (
@@ -97,46 +106,52 @@ export function AccountAccess({
       </div>
       <header>
         <p className="eyebrow">{accessLoading ? "ACCOUNT ACCESS" : connected ? "ACCOUNT CONNECTED" : "PASSWORDLESS ACCESS"}</p>
-        <h2 id="account-title">{accessLoading ? "Checking this browser…" : connected ? "Your credits and reports are ready." : "Sign in to your credits and reports."}</h2>
+        <h2 id="account-title">{accessLoading ? unavailable ? "Account temporarily unavailable" : "Checking this browser…" : connected ? "Your credits and reports are ready." : "Sign in to your credits and reports."}</h2>
         <p>{accessLoading
-          ? "Looking for saved access to your MC Lab account."
+          ? unavailable ? "We’ll retry automatically. Your free product-data check is still available." : "Looking for saved access to your MC Lab account."
           : connected
           ? `This browser has secure access to ${accountAccess.email_hint ?? "your account"}.`
-          : "Passwordless. Use the email you verified or the Paddle checkout email. Each link works once and expires in 15 minutes. Credits and reports are not lost if the link expires."}</p>
+          : "Use your verified email or Paddle checkout email to request a secure sign-in link."}</p>
       </header>
       <div className="account-access-body">
         {accessLoading ? (
-          <p className="account-loading" role="status">Checking account access…</p>
+          <p className="account-loading" role="status">{unavailable ? "Retrying account access…" : "Checking account access…"}</p>
         ) : connected ? (
           <div className="connected-account-summary">
             <h3>Account available on this browser</h3>
             <strong>{connectedSummary}</strong>
             <p>{remaining
-              ? "Your complimentary Self-Check is ready. A completed result uses it; a technical failure does not."
+              ? "Your complimentary AI test is ready. A completed result uses it; a technical failure does not."
               : "Credits do not expire. You can return to this browser without requesting another access link."}</p>
           </div>
         ) : (
           <div className="account-access-forms">
-            {signupAvailable ? (
+            {signupAvailable && enabled ? <div className="account-modes" role="group" aria-label="Choose account access">
+              <button type="button" aria-pressed={mode === "signin"} disabled={pending} onClick={() => setMode("signin")}>Sign in</button>
+              <button type="button" aria-pressed={mode === "signup"} disabled={pending} onClick={() => setMode("signup")}>First time? Verify email</button>
+            </div> : null}
+            {signupAvailable && (mode === "signup" || !enabled) ? (
               <FreeCheckSignupForm
-                title="Need a verification link?"
-                description="New here? Verify your email for 1 free Self-Check. Already verified? Use the sign-in form beside this."
+                compact
+                title="Get 1 complimentary AI test"
+                description="Verify your email first, then choose a product to test. The free product-data check needs no account."
               />
             ) : null}
-            {enabled ? (
+            {enabled && (mode === "signin" || !signupAvailable) ? (
               <form onSubmit={requestLink}>
                 <h3>Email me a sign-in link</h3>
-                <p>Already have credits or a report? Use the email on that account. If a link was already opened or expired, request a new one.</p>
+                <p>Each link works once and expires in 15 minutes. Request a new link if it expires; your credits and reports stay on your account.</p>
                 <label htmlFor="recovery-email">Account email</label>
                 <div className="recovery-row">
-                  <input id="recovery-email" type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} />
-                  <button type="submit" disabled={pending}>{pending ? "Sending…" : "Email access link"}</button>
+                  <input id="recovery-email" type="email" required autoComplete="email" disabled={pending} value={email} onChange={(event) => setEmail(event.target.value)} />
+                  <button type="submit" disabled={pending}>{pending ? "Sending…" : "Email sign-in link"}</button>
                 </div>
               </form>
             ) : null}
           </div>
         )}
         <div>
+          {accessError ? <p role="alert">Account services could not be loaded. Reload this page to try again.</p> : null}
           <h3>{connected ? "Your reports" : "Reports on this browser"}</h3>
           {!historyLoaded ? <p role="status">Loading reports…</p> : history.length ? (
             <ul className="report-history">
@@ -151,12 +166,12 @@ export function AccountAccess({
         </div>
         {connected && enabled ? (
           <details className="account-switch">
-            <summary>Use a different checkout email</summary>
+            <summary>Sign in to another account</summary>
             <form onSubmit={requestLink}>
               <label htmlFor="recovery-email-connected">Checkout email</label>
               <div className="recovery-row">
-                <input id="recovery-email-connected" type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} />
-                <button type="submit" disabled={pending}>{pending ? "Sending…" : "Email access link"}</button>
+                <input id="recovery-email-connected" type="email" required autoComplete="email" disabled={pending} value={email} onChange={(event) => setEmail(event.target.value)} />
+                <button type="submit" disabled={pending}>{pending ? "Sending…" : "Email sign-in link"}</button>
               </div>
             </form>
           </details>

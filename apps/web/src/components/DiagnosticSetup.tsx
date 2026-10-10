@@ -2,7 +2,6 @@ import type { FormEvent } from "react";
 import type { PreviewSnapshot } from "@mclab/shopify-online-store";
 
 import {
-  PREVIEW_FORM_WINDOW_TITLE,
   previewBoundaryCopy,
   previewCtaLabel,
   previewHandoffSignupDescription,
@@ -26,8 +25,11 @@ export function DiagnosticSetup({
   previousPreviewSnapshot,
   previewReadable,
   onRunPreview,
+  onCancelPreview,
+  previewNotice,
   onSubmit,
   pending,
+  activeTask,
   market,
   onMarketChange,
   category,
@@ -53,8 +55,11 @@ export function DiagnosticSetup({
   previousPreviewSnapshot: PreviewSnapshot | null;
   previewReadable: boolean;
   onRunPreview: () => void;
+  onCancelPreview: () => void;
+  previewNotice: string | null;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   pending: boolean;
+  activeTask: boolean;
   market: string;
   onMarketChange: (value: string) => void;
   category: string;
@@ -73,33 +78,31 @@ export function DiagnosticSetup({
   requiredCredits: number;
 }) {
   return (
-    <form onSubmit={onSubmit} className="preflight-form task-form macos-window" id="start">
-      <div className="macos-window-titlebar" aria-hidden="true">
-        <div className="macos-traffic-lights">
-          <span className="dot dot-close" />
-          <span className="dot dot-minimize" />
-          <span className="dot dot-zoom" />
-        </div>
-        <span className="macos-window-title">{PREVIEW_FORM_WINDOW_TITLE}</span>
-      </div>
-      <p className="start-label">YOUR FREE PRODUCT CHECK</p>
+    <section className="preflight-form task-form macos-window" id="start" aria-label="Check your product">
+      <form className="product-check-form" onSubmit={(event) => { event.preventDefault(); onRunPreview(); }}>
       <label htmlFor="product-url">Shopify product URL</label>
       <div className={previewPending ? "input-row is-scanning" : "input-row"}>
         <input
           id="product-url"
           type="url"
           required
+          autoComplete="url"
+          aria-describedby={previewError ? "preview-boundary preview-error" : "preview-boundary"}
+          aria-invalid={Boolean(previewError)}
           placeholder="https://yourstore.com/products/your-product"
           value={productUrl}
           onChange={(event) => onProductUrlChange(event.target.value)}
         />
-        <button type="button" onClick={onRunPreview} disabled={!productUrl || previewPending}>
+        <button type="submit" disabled={previewPending}>
           {previewCtaLabel(previewPending)}
         </button>
       </div>
-      <p className="preview-boundary">{previewBoundaryCopy(freeCheckEnabled)}</p>
+      <p className="preview-boundary" id="preview-boundary">{previewBoundaryCopy(freeCheckEnabled)}</p>
+      </form>
+      {previewPending ? <button type="button" className="cancel-preview" onClick={onCancelPreview}>Cancel check</button> : null}
+      {previewNotice ? <p role="status">{previewNotice}</p> : null}
       {previewPending && !preview ? <FreePreviewScanning /> : null}
-      {previewError ? <FreePreviewFailure message={previewError} /> : null}
+      {previewError ? <div id="preview-error"><FreePreviewFailure message={previewError} /></div> : null}
       {preview ? previewReadable
         ? (
           <FreePreviewResult
@@ -116,7 +119,7 @@ export function DiagnosticSetup({
                 id="free-check-signup"
                 compact
                 className="is-handoff"
-                title="Verify email for 1 free Self-Check"
+                title="Try 1 complimentary AI shopping test"
                 description={previewHandoffSignupDescription()}
                 submitLabel={previewSuccessCtaLabel}
               />
@@ -126,7 +129,7 @@ export function DiagnosticSetup({
         : <FreePreviewFailure message="The page loaded, but title and price were not readable. Try the canonical /products/{handle} URL." />
       : null}
       {previewReadable ? (
-        <div className="ai-test-step">
+        <form className="ai-test-step" onSubmit={onSubmit}>
           <p className="eyebrow">Optional · Recorded AI shopping test</p>
           <label>Target market<input required minLength={2} maxLength={80} value={market} onChange={(event) => onMarketChange(event.target.value)} /></label>
           <details className="advanced-settings">
@@ -141,18 +144,18 @@ export function DiagnosticSetup({
             </div>
           </details>
           {showHeroSignup ? (
-            <p className="signup-next">Verify your email above, then run 1 free Self-Check. A completed result uses it, including when the product is not recommended.</p>
+            <p className="signup-next">Verify your email above, then run your complimentary AI test. A completed result uses it, including when the product is not recommended.</p>
           ) : null}
           <div className={showHeroSignup ? "run-test-row is-secondary-path" : "run-test-row"} id="run-self-check">
-            <button type="submit" disabled={pending}>{pending ? "Starting test…" : freeCheckRemaining ? "Run 1 free Self-Check" : "Run AI shopping test"}</button>
+            <button type="submit" disabled={pending || activeTask}>{pending ? "Starting test…" : activeTask ? "AI test running…" : freeCheckRemaining ? "Run complimentary AI test" : "Run AI shopping test"}</button>
             <p>{showHeroSignup
               ? "Prefer to pay? Buy a credit pack below. The recorded test is not the free preview."
               : freeCheckRemaining
-                ? "A completed result uses your 1 free Self-Check, including when the product is not recommended. A technical failure does not."
+                ? "A completed result uses your complimentary AI test, including when the product is not recommended. A technical failure does not."
                 : `Uses ${requiredCredits} credits only after the test finishes. Credits stay on the Paddle checkout email.`}</p>
           </div>
-        </div>
+        </form>
       ) : null}
-    </form>
+    </section>
   );
 }

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   ACQUISITION_EYEBROW,
   ACQUISITION_HERO_ACCENT,
@@ -10,42 +9,29 @@ import { trackConversion } from "../analytics";
 import { SelfCheckFilm } from "./SelfCheckFilm";
 import { PaddleCheckout } from "./PaddleCheckout";
 
-export function HeroCopy({ freeCheckEnabled, hasResult = false }: { freeCheckEnabled: boolean; hasResult?: boolean }) {
+export function HeroCopy() {
   return (
     <div className="hero-copy">
       <p className="eyebrow">{ACQUISITION_EYEBROW}</p>
       <h1>{ACQUISITION_HERO_LEAD}<br /><span>{ACQUISITION_HERO_ACCENT}</span></h1>
-      <p className="lede">{acquisitionLede(freeCheckEnabled)}</p>
-      <ul className="free-check-promises" aria-label="Included in the free check">
-        <li>See what’s readable</li><li>Find what needs fixing</li><li>Recheck your changes</li>
-      </ul>
-      <div className="hero-journey" aria-label="Your Self-Check journey"><a href="#start"><span>01 · FREE</span><strong>Check readability</strong></a><span aria-hidden="true">→</span><a href="#recorded-test"><span>02 · OPTIONAL</span><strong>Test recommendations</strong></a></div>
-      <p className="hero-links"><a href={hasResult ? "#start" : "#free-example"}>{hasResult ? "Back to your product check ↓" : "See how the free check works ↓"}</a> <a href="https://geo.mclab.party/guides/check-shopify-product-ai-visibility/">New to AI product discovery? Read the guide ↗</a></p>
+      <p className="lede">{acquisitionLede(false)}</p>
     </div>
   );
 }
 
 export function FreeCheckExample() {
-  const [step, setStep] = useState(0);
-  const steps = ["Paste a URL", "See the finding", "Fix & recheck"];
   return (
     <aside className="free-example" id="free-example" aria-labelledby="free-example-title">
-      <div className="example-topline"><span>INSIDE YOUR FREE CHECK</span><span className="example-label">Illustrative example</span></div>
-      <div className="example-product"><div className="example-product-art" aria-hidden="true"><span /></div><div><p>YOUR PRODUCT, MADE READABLE</p><h2 id="free-example-title">Everyday carry bag</h2><span>Fictional product · not a live test</span></div></div>
-      <div className="example-steps" role="group" aria-label="Explore the free-check example">
-        {steps.map((label, index) => <button key={label} type="button" aria-pressed={step === index} aria-controls="example-stage" onClick={() => setStep(index)}><span aria-hidden="true">0{index + 1}</span>{label}</button>)}
-      </div>
-      <div id="example-stage" className="example-stage" aria-live="polite" aria-atomic="true">
-      {step === 0 && <div className="example-url-step"><span className="example-step-label">01 / START WITH ONE PRODUCT</span><h3>Paste your Shopify product URL.</h3><p className="example-url">example.com/products/everyday-bag</p><p>No installation. No account. Your check reads the public information on that product page.</p></div>}
-      {step === 1 && <><h3>See where your product data disagrees.</h3><ul className="example-checks">
+      <div className="example-topline"><span>EXAMPLE REPORT</span><span className="example-label">Fictional product</span></div>
+      <div className="example-product"><div className="example-product-art" aria-hidden="true"><span /></div><div><h2 id="free-example-title">Everyday carry bag</h2><span>Product-data check · not a live test</span></div></div>
+      <ul className="example-checks">
         <li><span>Product title</span><strong className="example-good">✓ Readable</strong></li>
         <li><span>Price &amp; availability</span><strong className="example-good">✓ Readable</strong></li>
         <li><span>Product images</span><strong className="example-warning">Review disagreement</strong></li>
-      </ul><p>The page’s featured image and structured product data point to different images. Your result shows the sources to compare.</p></>}
-      {step === 2 && <div className="example-action"><span>ONE CLEAR NEXT STEP</span><h3>Make your product images agree.</h3><p>Compare your Shopify featured image with the images in your theme’s product data. Update an outdated reference if they describe different products.</p><p>After updating Shopify, recheck the same URL to see whether the disagreement is resolved.</p></div>}
-      </div>
-      <div className="example-next"><button type="button" onClick={() => setStep((step + 1) % steps.length)}>{step === 0 ? "See the example finding →" : step === 1 ? "See what to do next →" : "Replay example ↺"}</button>{step === 2 && <a href="#start">Check my product for free →</a>}</div>
-      <p className="example-footnote">Your own result includes observed fields, source details, and relevant next steps. This example does not measure AI visibility.</p>
+      </ul>
+      <div className="example-action"><span>SUGGESTED FIX</span><h3>Check the image references.</h3><p>The featured image and structured data point to different images. Compare them, then update any outdated reference in your Shopify theme.</p></div>
+      <p className="example-loop">Fix in Shopify → Recheck the same URL</p>
+      <p className="example-footnote">Your report includes captured fields, sources and suggested fixes. Product data does not establish AI recommendations.</p>
     </aside>
   );
 }
@@ -61,8 +47,8 @@ export function OutcomeStrip() {
 }
 
 export function FreeCheckQuestions() {
-  return <section className="free-questions" aria-labelledby="free-questions-title">
-    <div><p className="eyebrow">A useful first step</p><h2 id="free-questions-title">Questions before<br />you check?</h2><p>One product URL. A clearer view of your public product data.</p></div>
+  return <section className="free-questions" id="faq" aria-labelledby="free-questions-title">
+    <div><p className="eyebrow">A useful first step</p><h2 id="free-questions-title">Questions, answered.</h2><p>One product URL. A clearer view of your public product data.</p></div>
     <div className="free-question-list">
       <details><summary>How can I check whether AI can read my Shopify product?</summary><p>Start by checking the public facts and access rules on the product URL. This free check reads those sources and flags missing or conflicting information. It cannot prove that a particular AI has fetched or recommended your product.</p></details>
       <details><summary>What can I fix with the free check?</summary><p>Depending on the captured evidence, you may find missing product fields, conflicting prices or images, unreadable structured data, or crawler restrictions. Each suggested action points to the relevant Shopify setting or page source. A field not found here may exist elsewhere on your store.</p></details>
@@ -76,18 +62,16 @@ export function HowItWorks({ freeCheckEnabled }: { freeCheckEnabled: boolean }) 
   return (
     <section className="agent-section campaign-agents" id="recorded-test" aria-labelledby="how-it-works-title">
       <div className="recorded-intro"><div>
-      <p className="eyebrow">STEP 2 · AI RECOMMENDATION TEST</p>
-      <h2 id="how-it-works-title">Will AI recommend your product?</h2>
-      <p className="agent-intro">Test your product against natural buyer questions. See whether it appears, makes the shortlist, or gets recommended—and read the conversation behind the result.</p>
+      <p className="eyebrow">OPTIONAL · RECORDED AI SHOPPING TEST</p>
+      <h2 id="how-it-works-title">Go beyond product data.</h2>
+      <p className="agent-intro">Test your product against natural buyer questions. See whether it appears, makes the shortlist, or gets recommended in a controlled API test. Read the recorded conversation and sources; this is not a consumer ChatGPT ranking.</p>
       </div><SelfCheckFilm /></div>
-      <ol className="campaign-agent-grid">
-        <li><span className="agent-index" aria-hidden="true">01</span><span className="agent-role">BUYER CONTROLLER</span><h3>Asks. Follows up.</h3><p>Uses the buyer’s needs and the last answer’s evidence to choose the next move.</p></li>
-        <li><span className="agent-index" aria-hidden="true">02</span><span className="agent-role">SHOPPING AI</span><h3>Searches. Suggests.</h3><p>Searches the web and returns product suggestions and sources without private brand hints.</p></li>
-        <li><span className="agent-index" aria-hidden="true">03</span><span className="agent-role">INDEPENDENT REVIEW</span><h3>Keeps questions honest.</h3><p>Checks for leaked target identity or a question that drifts from the buyer’s original needs.</p></li>
-        <li><span className="agent-index" aria-hidden="true">04</span><span className="agent-role">PRODUCT DIAGNOSIS</span><h3>Shows where you stand.</h3><p>Records where your product appears, is shortlisted or recommended, with the conversation and next step.</p></li>
-      </ol>
-      <div className="adaptive-explainer"><strong>The next move follows the evidence.</strong><p><span>Explore</span><span>Verify</span><span>Compare</span><span>Stop</span></p><small>Unknowns can trigger another question. Suitable options can be compared. Enough evidence—or no progress—can end the test.</small></div>
-      <a className="campaign-start" href="#start">{freeCheckEnabled ? "Check my product for free →" : "Start with your product →"}</a>
+      <p className="recorded-boundary">{freeCheckEnabled ? "Verify your email for 1 complimentary AI test. Further tests use credit packs." : "Recorded AI tests require credits."} A completed negative result is still a completed test.</p>
+      <details className="test-method"><summary>How the recorded test works</summary>
+        <ol><li>Understand the product and establish a buyer’s needs.</li><li>Run a natural shopping conversation without private brand hints.</li><li>Review the questions, answers and sources, then report the observed outcome and a next step.</li></ol>
+        <p>Questions adapt to the captured evidence. Missing evidence is not proof of product absence, and no test guarantees recommendations, rankings or sales.</p>
+      </details>
+      <a className="campaign-start" href="#start">Start with a product-data check →</a>
     </section>
   );
 }
@@ -138,10 +122,10 @@ export function CreditPacks({
 }) {
   return (
     <section className="pricing commercial-path paid-path" id="pricing" aria-labelledby="pricing-title">
-      <p className="eyebrow">Paid credit packs · separate from the free Self-Check</p>
+      <p className="eyebrow">ONE-TIME CREDIT PACKS</p>
       <h2 id="pricing-title">More recorded tests</h2>
       <p className="path-lede">{freeCheckEnabled
-        ? "After the complimentary Self-Check, buy a one-time pack."
+        ? "For more AI shopping tests, choose a one-time pack. The product-data check stays free."
         : "Buy a one-time pack to run the recorded AI shopping test."}</p>
       {showCreditPrompt ? <p className="pricing-prompt" role="status">{freeCheckGranted && freeCheckRemainingZero
         ? "0 remaining. Choose a one-time credit pack for more Self-Checks."

@@ -19,9 +19,9 @@ export function parsePublicOffer(raw: string | null | undefined): PublicOfferSta
 
 export const ACQUISITION_DOCUMENT_TITLE = "Free Shopify Product Check | MC Lab Self-Check";
 export const ACQUISITION_OG_TITLE = "Can AI read and recommend your product? | MC Lab Self-Check";
-export const ACQUISITION_EYEBROW = "MC Lab Self-Check · Free product check";
-export const ACQUISITION_HERO_LEAD = "Can AI read your product?";
-export const ACQUISITION_HERO_ACCENT = "Will it recommend it?";
+export const ACQUISITION_EYEBROW = "Free Shopify product check";
+export const ACQUISITION_HERO_LEAD = "Check your product.";
+export const ACQUISITION_HERO_ACCENT = "Know what to fix.";
 export const PREVIEW_FORM_WINDOW_TITLE = "Product Data Preview";
 
 export function acquisitionMetaDescription(_enabled: boolean): string {
@@ -29,7 +29,7 @@ export function acquisitionMetaDescription(_enabled: boolean): string {
 }
 
 export function acquisitionLede(_enabled: boolean): string {
-  return "Start with a free Shopify product-data check. Fix missing or conflicting details and recheck for free. Then run an optional AI shopping test to see whether your product gets recommended for a buyer’s needs.";
+  return "Find missing or conflicting Shopify product details. Get suggested fixes and recheck for free.";
 }
 
 export function previewBoundaryCopy(_enabled: boolean): string {
@@ -37,7 +37,7 @@ export function previewBoundaryCopy(_enabled: boolean): string {
 }
 
 export function previewStartNavLabel(): string {
-  return "Check a product for free";
+  return "Check product data";
 }
 
 export function previewResultHeadline(status: "complete" | "partial"): string {
@@ -49,7 +49,7 @@ export function previewResultBadge(status: "complete" | "partial"): string {
 }
 
 export function previewCtaLabel(pending: boolean): string {
-  return pending ? "Reading product…" : "Check my product for free →";
+  return pending ? "Reading product…" : "Check product data";
 }
 
 export const FREE_PREVIEW_SCAN_STAGES = [
@@ -151,11 +151,11 @@ export function previewSharePath(productUrl: string): string {
 }
 
 export function previewSuccessCtaLabel(pending: boolean): string {
-  return pending ? "Sending…" : "Verify email for 1 free Self-Check";
+  return pending ? "Sending…" : "Email verification link";
 }
 
 export function previewHandoffSignupDescription(): string {
-  return "Passwordless. No card and no charge. Then you can run 1 free recorded Self-Check.";
+  return "Verify your email to claim 1 complimentary AI shopping test. No card required.";
 }
 
 export function diagnosticWaitExpectation(): string {
@@ -177,7 +177,7 @@ export function previewSuccessNextStep(input: {
   if (input.freeCheckEnabled && input.needsEmailVerification) {
     return {
       kind: "verify_email",
-      label: "Verify email for 1 free Self-Check",
+      label: "Email verification link",
       href: "#free-check-signup",
       secondary: { label: "Buy a credit pack instead", href: "#pricing" },
     };
@@ -185,7 +185,7 @@ export function previewSuccessNextStep(input: {
   if (input.freeCheckRemaining) {
     return {
       kind: "run_free_check",
-      label: "Continue below to run 1 free Self-Check",
+      label: "Continue to your complimentary AI test",
       href: "#run-self-check",
     };
   }

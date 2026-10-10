@@ -80,13 +80,13 @@ describe("public offer copy", () => {
       freeCheckRemaining: false,
     })).toEqual({
       kind: "verify_email",
-      label: "Verify email for 1 free Self-Check",
+      label: "Email verification link",
       href: "#free-check-signup",
       secondary: { label: "Buy a credit pack instead", href: "#pricing" },
     });
-    expect(previewSuccessCtaLabel(false)).toBe("Verify email for 1 free Self-Check");
+    expect(previewSuccessCtaLabel(false)).toBe("Email verification link");
     expect(previewSuccessCtaLabel(true)).toBe("Sending…");
-    expect(previewHandoffSignupDescription()).toContain("1 free recorded Self-Check");
+    expect(previewHandoffSignupDescription()).toContain("1 complimentary AI shopping test");
     expect(previewHandoffSignupDescription()).not.toMatch(/ranking|traffic|revenue/i);
     const freeRun = previewSuccessNextStep({
       freeCheckEnabled: true,
@@ -94,7 +94,7 @@ describe("public offer copy", () => {
       freeCheckRemaining: true,
     });
     expect(freeRun.kind).toBe("run_free_check");
-    expect(freeRun.label).toContain("1 free Self-Check");
+    expect(freeRun.label).toContain("complimentary AI test");
     expect(freeRun.secondary).toBeUndefined();
     const paidRun = previewSuccessNextStep({
       freeCheckEnabled: false,

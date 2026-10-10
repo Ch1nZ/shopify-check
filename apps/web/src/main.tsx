@@ -32,7 +32,7 @@ import {
   ProfessionalReview,
   SampleReport,
 } from "./components/MarketingSections";
-import { SiteFooter, SiteHeader, StickyStart } from "./components/SiteChrome";
+import { SiteFooter, SiteHeader } from "./components/SiteChrome";
 import { trackConversion } from "./analytics";
 import { readBootstrappedPublicOffer } from "./public-offer";
 import { readPreviewSnapshot, rememberPreviewSnapshot } from "./preview-history";
@@ -72,6 +72,7 @@ function App() {
   const [constraints, setConstraints] = useState("");
   const [preferences, setPreferences] = useState("");
   const [balance, setBalance] = useState<CreditBalance | null>(null);
+  const [accountUnavailable, setAccountUnavailable] = useState(false);
   const [accountAccess, setAccountAccess] = useState<AccountAccessState | null>(null);
   const [freeCheck, setFreeCheck] = useState<FreeCheckState>(() => {
     const enabled = readBootstrappedPublicOffer().free_check_enabled;
@@ -88,6 +89,10 @@ function App() {
   const completedTracked = useRef<string | null>(null);
   const focusedTaskId = useRef<string | null>(null);
   const skipPreviewScroll = useRef(false);
+  const previewRequest = useRef<AbortController | null>(null);
+  const taskRequest = useRef(false);
+  const [previewNotice, setPreviewNotice] = useState<string | null>(null);
+  useEffect(() => () => { previewRequest.current?.abort(); }, []);
 
   useEffect(() => trackConversion("self_check_view"), []);
 
@@ -96,13 +101,14 @@ function App() {
     const refresh = () => void fetch("/api/v1/billing/credits").then((response) => response.json()).then(
       (payload: { data?: CreditBalance & { account_access?: AccountAccessState; credits_per_completed_task?: number; free_check?: FreeCheckState } }) => {
         if (active && payload.data) {
+          setAccountUnavailable(false);
           setBalance(payload.data);
           if (payload.data.account_access) setAccountAccess(payload.data.account_access);
           if (payload.data.free_check) setFreeCheck(payload.data.free_check);
           if (payload.data.credits_per_completed_task) setTaskCost(payload.data.credits_per_completed_task);
-        }
+        } else if (active) setAccountUnavailable(true);
       },
-    );
+    ).catch(() => { if (active) setAccountUnavailable(true); });
     refresh();
     const timer = window.setInterval(refresh, 5_000);
     return () => { active = false; window.clearInterval(timer); };
@@ -129,8 +135,9 @@ function App() {
         window.clearInterval(timer);
       }
     };
-    void poll();
-    const timer = window.setInterval(() => void poll(), 2_500);
+    const refresh = () => void poll().catch(() => { if (active) setError("Task status is temporarily unavailable. We’ll keep checking."); });
+    refresh();
+    const timer = window.setInterval(refresh, 2_500);
     return () => { active = false; window.clearInterval(timer); };
   }, [taskId]);
 
@@ -138,7 +145,7 @@ function App() {
     if (!taskId || focusedTaskId.current === taskId) return;
     focusedTaskId.current = taskId;
     window.requestAnimationFrame(() => {
-      document.getElementById("report")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.getElementById("report")?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
     });
   }, [taskId]);
 
@@ -161,6 +168,7 @@ function App() {
 
   async function runCheck(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (taskRequest.current || taskInProgress) return;
     if (!hasEnoughCredits) {
       const guestNeedsSignup = freeCheck.signup_available && accountAccess?.status !== "connected";
       if (!guestNeedsSignup) setShowCreditPrompt(true);
@@ -177,6 +185,7 @@ function App() {
       });
       return;
     }
+    taskRequest.current = true;
     setPending(true);
     setResult(null);
     setError(null);
@@ -210,6 +219,7 @@ function App() {
         setError(payload.error?.message ?? "The technical check could not be completed.");
         return;
       }
+      setTask(null);
       setTaskId(payload.data.task_id);
       trackConversion("diagnostic_started");
       if (payload.data.product_record && payload.data.technical_check) setResult({
@@ -219,21 +229,37 @@ function App() {
         artifact_links: taskArtifactLinks(payload.data.task_id),
       });
     } catch {
-      setError("The development API is not available.");
+      setError("The test could not be started. Please try again.");
     } finally {
+      taskRequest.current = false;
       setPending(false);
     }
   }
 
+  function cancelPreview(notify = true) {
+    previewRequest.current?.abort();
+    previewRequest.current = null;
+    setPreviewPending(false);
+    setPreviewNotice(notify ? "Check cancelled. You can start again." : null);
+  }
+
   async function runFreePreview(requestedUrl = productUrl) {
+    if (previewRequest.current) return;
+    try {
+      requestedUrl = validatePublicProductUrl(requestedUrl).toString();
+    } catch (error) {
+      setPreviewError(previewFailureMessage(error instanceof CollectionError ? { code: error.code } : { code: "INVALID_URL" }));
+      return;
+    }
+    setPreviewNotice(null);
     const refreshing = preview !== null && !previewError;
     skipPreviewScroll.current = refreshing;
     setPreviewPending(true);
     if (!refreshing) setPreview(null);
     setPreviewError(null);
     trackConversion("preview_started");
-    const startedAt = Date.now();
     const controller = new AbortController();
+    previewRequest.current = controller;
     const timeout = window.setTimeout(() => controller.abort(), 20_000);
     let nextPreview: FreeProductPreview | null = null;
     let nextError: string | null = null;
@@ -245,6 +271,7 @@ function App() {
         signal: controller.signal,
       });
       const payload = await response.json() as { data?: FreeProductPreview; error?: ApiError };
+      if (previewRequest.current !== controller) return;
       if (!response.ok || !payload.data) {
         nextError = previewFailureMessage(payload.error);
       } else {
@@ -263,12 +290,12 @@ function App() {
         : "The free preview is temporarily unavailable.";
     } finally {
       window.clearTimeout(timeout);
-      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const wait = (reducedMotion ? 0 : 700) - (Date.now() - startedAt);
-      if (wait > 0) await new Promise((resolve) => window.setTimeout(resolve, wait));
-      setPreview(nextPreview);
-      setPreviewError(nextError);
-      setPreviewPending(false);
+      if (previewRequest.current === controller) {
+        previewRequest.current = null;
+        setPreview(nextPreview);
+        setPreviewError(nextError);
+        setPreviewPending(false);
+      }
     }
   }
 
@@ -302,14 +329,7 @@ function App() {
     !freeCheckRemaining,
   );
 
-  function handleStartSubmit(event: FormEvent<HTMLFormElement>) {
-    if (!previewReadable) {
-      event.preventDefault();
-      if (!previewPending) void runFreePreview();
-      return;
-    }
-    void runCheck(event);
-  }
+  const taskInProgress = Boolean(taskId && (!task || !["completed", "incomplete", "budget_exhausted", "failed_validation", "cancelled"].includes(task.session.status)));
 
   return (
     <main>
@@ -323,11 +343,12 @@ function App() {
       <section className={`hero self-check-hero free-first${preview || previewPending || previewError ? " has-result" : ""}`}>
         <div className="hero-layout">
         <div className="hero-intro">
-        <HeroCopy freeCheckEnabled={freeCheck.enabled} hasResult={Boolean(preview || previewPending || previewError)} />
+        <HeroCopy />
 
         <DiagnosticSetup
           productUrl={productUrl}
           onProductUrlChange={(value) => {
+            cancelPreview(false);
             setProductUrl(value);
             setPreview(null);
             setPreviewError(null);
@@ -339,8 +360,11 @@ function App() {
           previousPreviewSnapshot={previousPreviewSnapshot}
           previewReadable={previewReadable}
           onRunPreview={() => void runFreePreview()}
-          onSubmit={handleStartSubmit}
+          onCancelPreview={() => cancelPreview()}
+          previewNotice={previewNotice}
+          onSubmit={runCheck}
           pending={pending}
+          activeTask={taskInProgress}
           market={market}
           onMarketChange={setMarket}
           category={category}
@@ -359,7 +383,8 @@ function App() {
           requiredCredits={requiredCredits}
         />
 
-        {pending ? <p className="progress" role="status">Reading the public page, Shopify product data, and robots.txt. This usually takes a few seconds.</p> : null}
+        {pending ? <p className="progress" role="status">Starting your recorded AI shopping test…</p> : null}
+        {!preview && !previewPending && !previewError ? <p className="hero-links"><a href="#free-example">See an example report ↓</a><a href="#recorded-test">Explore the optional AI test ↓</a></p> : <p className="hero-links"><a href="#feedback">Report a problem with this check</a></p>}
         {error ? <p className="result" role="alert">{error}</p> : null}
 
         </div>
@@ -380,12 +405,7 @@ function App() {
         />
       ) : null}
 
-      <Feedback taskId={task ? taskId ?? undefined : undefined} productUrl={preview?.product_url} />
-
-      <FreeCheckQuestions />
       <HowItWorks freeCheckEnabled={freeCheck.enabled} />
-
-      <SampleReport />
 
       <CreditPacks
         freeCheckEnabled={freeCheck.enabled}
@@ -395,16 +415,21 @@ function App() {
         requiredCredits={requiredCredits}
       />
 
+      <FreeCheckQuestions />
+
+      <SampleReport />
+
       <ProfessionalReview />
 
       <AccountAccess
         accountAccess={accountAccess}
+        unavailable={accountUnavailable}
         balance={balance}
         freeCheck={freeCheck}
-        onOpenReport={(id) => { setTaskId(id); window.location.hash = "report"; }}
+        onOpenReport={(id) => { if (id !== taskId) setTask(null); setTaskId(id); window.location.hash = "report"; }}
       />
 
-      <StickyStart />
+      <Feedback taskId={task ? taskId ?? undefined : undefined} productUrl={preview?.product_url} />
 
       <SiteFooter />
     </main>

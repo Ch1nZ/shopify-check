@@ -15,3 +15,11 @@ jobs:
       - run: npm run check
       - run: npm run privacy:check
       - run: npm run dry-run
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:ui
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failure-evidence
+          path: apps/web/test-results/
+          retention-days: 7
