@@ -226,6 +226,8 @@
   .example-checks li { gap: 8px; }
   .account-access > header, .account-access-body { padding: 20px; }
   .account-access > header { padding-bottom: 0; }
+  /* The row becomes a column here: horizontal flex bases must not become heights. */
+  .recovery-row input, .recovery-row button { flex: none; }
 }
 @media(max-width:420px) {
   .brand-label small { display: none; }

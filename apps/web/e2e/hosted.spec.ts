@@ -312,3 +312,57 @@ test('free check timeout stops the request and restores retry', async ({ page })
   await expect(page.getByRole('button', { name: 'Check product data', exact: true })).toBeEnabled();
   release();
 });
+
+for (const width of [320, 390, 400, 500, 760, 761, 1180]) {
+  test(`account control sizing across modes at ${width}px`, async ({ page }, info) => {
+    const account = { connected: false, credits: 60 };
+    const { requests, errors } = await boot(page, account);
+    await page.setViewportSize({ width, height: 600 });
+    await page.goto('/#account');
+    const geometry: Record<string, unknown> = {};
+    async function inspect(mode: string, inputId: string) {
+      const input = page.locator(inputId);
+      await expect(input).toBeVisible();
+      await input.fill("synthetic@example.com");
+      const row = input.locator('..');
+      const button = row.getByRole('button');
+      await expect(button).toBeVisible();
+      // Capture all boxes in one frame; focus can trigger smooth viewport scrolling.
+      const { inputBox, buttonBox, rowBox, direction } = await row.evaluate(el => ({
+        inputBox: el.querySelector('input')!.getBoundingClientRect().toJSON(),
+        buttonBox: el.querySelector('button')!.getBoundingClientRect().toJSON(),
+        rowBox: el.getBoundingClientRect().toJSON(),
+        direction: getComputedStyle(el).flexDirection,
+      }));
+      geometry[mode] = { inputBox, buttonBox, rowBox, direction };
+      await page.locator('#account').screenshot({ path: info.outputPath(`${mode}.png`) });
+      for (const box of [inputBox, buttonBox]) {
+        expect(box.height).toBeGreaterThanOrEqual(44);
+        expect(box.height).toBeLessThanOrEqual(72);
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(width);
+      }
+      if (width <= 760) {
+        expect(direction).toBe('column');
+        expect(buttonBox.y).toBeGreaterThanOrEqual(inputBox.y + inputBox.height);
+        expect(rowBox.height).toBeLessThanOrEqual(152);
+      } else {
+        expect(direction).toBe('row');
+      }
+      await input.focus();
+      await page.keyboard.press('Tab');
+      await expect(button).toBeFocused();
+      await noOverflow(page);
+    }
+    await inspect('sign-in', '#recovery-email');
+    await page.getByRole('button', { name: 'First time? Verify email' }).click();
+    await inspect('verify-email', '#signup-email');
+    account.connected = true;
+    await page.reload();
+    await page.getByText('Sign in to another account', { exact: true }).click();
+    await inspect('switch-account', '#recovery-email-connected');
+    await info.attach('account-geometry', { body: JSON.stringify(geometry, null, 2), contentType: 'application/json' });
+    expect(requests.filter(r => /\/account\/(signup|recovery)$/.test(r.path))).toHaveLength(0);
+    expect(errors).toEqual([]);
+  });
+}
