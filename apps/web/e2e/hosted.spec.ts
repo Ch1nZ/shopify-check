@@ -327,10 +327,13 @@ for (const width of [320, 390, 400, 500, 760, 761, 1180]) {
       const row = input.locator('..');
       const button = row.getByRole('button');
       await expect(button).toBeVisible();
-      const inputBox = (await input.boundingBox())!;
-      const buttonBox = (await button.boundingBox())!;
-      const rowBox = (await row.boundingBox())!;
-      const direction = await row.evaluate(el => getComputedStyle(el).flexDirection);
+      // Capture all boxes in one frame; focus can trigger smooth viewport scrolling.
+      const { inputBox, buttonBox, rowBox, direction } = await row.evaluate(el => ({
+        inputBox: el.querySelector('input')!.getBoundingClientRect().toJSON(),
+        buttonBox: el.querySelector('button')!.getBoundingClientRect().toJSON(),
+        rowBox: el.getBoundingClientRect().toJSON(),
+        direction: getComputedStyle(el).flexDirection,
+      }));
       geometry[mode] = { inputBox, buttonBox, rowBox, direction };
       await page.locator('#account').screenshot({ path: info.outputPath(`${mode}.png`) });
       for (const box of [inputBox, buttonBox]) {
