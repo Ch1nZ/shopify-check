@@ -176,7 +176,7 @@
 .example-action > span { color: #705c2c; }
 .example-action h3 { font-size: 1.0625rem; }
 .example-action p { color: #5c584b; line-height: 1.6; }
-.example-footnote { margin-bottom: 0; font-size: .8125rem; line-height: 1.55; }
+.example-footnote { margin-bottom: 0; font-size: .875rem; line-height: 1.55; }
 .example-topline { flex-wrap: wrap; }
 .example-label { white-space: nowrap; }
 .example-checks li { animation: none; }
@@ -243,4 +243,11 @@
 @media(max-width:600px) {
   .account-nav-detail { display: none; }
   .account-nav-compact { display: inline; }
+}
+
+@media(max-width:360px) {
+  .self-check-hero.free-first { padding: 20px 16px 24px; }
+  .free-first h1 { font-size: 1.75rem; }
+  .free-first .lede { margin-bottom: 0; }
+  .free-first .preflight-form { margin-top: 20px; padding: 16px; }
 }

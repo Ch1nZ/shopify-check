@@ -19,7 +19,7 @@ export function parsePublicOffer(raw: string | null | undefined): PublicOfferSta
 
 export const ACQUISITION_DOCUMENT_TITLE = "Free Shopify Product Check | MC Lab Self-Check";
 export const ACQUISITION_OG_TITLE = "Can AI read and recommend your product? | MC Lab Self-Check";
-export const ACQUISITION_EYEBROW = "MC Lab Self-Check · Free product check";
+export const ACQUISITION_EYEBROW = "Free Shopify product check";
 export const ACQUISITION_HERO_LEAD = "Check your product.";
 export const ACQUISITION_HERO_ACCENT = "Know what to fix.";
 export const PREVIEW_FORM_WINDOW_TITLE = "Product Data Preview";
@@ -29,7 +29,7 @@ export function acquisitionMetaDescription(_enabled: boolean): string {
 }
 
 export function acquisitionLede(_enabled: boolean): string {
-  return "Find missing or conflicting details on your Shopify product page, see suggested fixes, and recheck for free.";
+  return "Find missing or conflicting Shopify product details. Get suggested fixes and recheck for free.";
 }
 
 export function previewBoundaryCopy(_enabled: boolean): string {
